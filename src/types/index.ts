@@ -59,3 +59,23 @@ export interface CompanyAnalysisResponse {
   company: Company;
   analysis: AnalysisOutput;
 }
+
+// ---------------------------------------------------------------------------
+// Service input/output types (API-shaped, for future backend)
+// ---------------------------------------------------------------------------
+
+export interface OverviewReportResult {
+  reportType: 'overview';
+  sections: ReportSection[];
+}
+
+// Re-export app state types for convenience
+export type {
+  ScreenId,
+  AnalystId,
+  AnalysisStatus as AppAnalysisStatus,
+  ReportTypeId,
+  GeneratedReports,
+  ReportingEngineState,
+  AppState,
+} from './app';
