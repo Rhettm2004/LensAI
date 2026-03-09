@@ -27,7 +27,13 @@ export type { Company };
 
 export type AnalystId = 'fundamental';
 
-export type AnalysisStatus = 'idle' | 'running' | 'complete';
+/** Single source of truth for analysis workflow; easy to map from backend job status later. */
+export type AnalysisStatus =
+  | 'idle'
+  | 'running'
+  | 'widget_1_complete'
+  | 'widget_2_complete'
+  | 'complete';
 
 export type ReportTypeId = 'overview' | 'valuation' | 'industry' | 'news';
 
@@ -49,8 +55,6 @@ export type AppState = {
   analysisStatus: AnalysisStatus;
   /** Loaded from data service when user runs analysis; drives workspace and report content. */
   analysisData: CompanyAnalysisResponse | null;
-  widgetProductReportReady: boolean;
-  widgetKpiTableReady: boolean;
   generatedReports: GeneratedReports;
   reportingEngineState: ReportingEngineState;
   generatingReportType: ReportTypeId | null;
@@ -125,8 +129,7 @@ type AppAction =
   | { type: 'SELECT_ANALYST'; payload: AnalystId }
   | { type: 'RUN_ANALYSIS' }
   | { type: 'SET_ANALYSIS_DATA'; payload: CompanyAnalysisResponse }
-  | { type: 'SET_WIDGET_PRODUCT_REPORT_READY' }
-  | { type: 'SET_WIDGET_KPI_TABLE_READY' }
+  | { type: 'SET_ANALYSIS_STATUS'; payload: AnalysisStatus }
   | { type: 'RESET_FLOW' }
   | { type: 'CHANGE_COMPANY' }
   | { type: 'CHANGE_ANALYST' }
@@ -171,8 +174,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
         maxStepReached: Math.max(state.maxStepReached, 2),
         analysisStatus: 'running',
         analysisData: null,
-        widgetProductReportReady: false,
-        widgetKpiTableReady: false,
         generatedReports: INITIAL_GENERATED_REPORTS,
         reportingEngineState: 'engine',
         generatingReportType: null,
@@ -182,17 +183,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_ANALYSIS_DATA':
       return { ...state, analysisData: action.payload };
 
-    case 'SET_WIDGET_PRODUCT_REPORT_READY':
-      return { ...state, widgetProductReportReady: true };
-
-    case 'SET_WIDGET_KPI_TABLE_READY': {
-      const next = {
-        ...state,
-        widgetKpiTableReady: true,
-      };
-      const bothReady = next.widgetProductReportReady && next.widgetKpiTableReady;
-      return bothReady ? { ...next, analysisStatus: 'complete' } : next;
-    }
+    case 'SET_ANALYSIS_STATUS':
+      return { ...state, analysisStatus: action.payload };
 
     case 'RESET_FLOW':
       return getInitialAppState();
@@ -209,8 +201,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         screen: 'choose-analyst',
         analysisStatus: 'idle',
-        widgetProductReportReady: false,
-        widgetKpiTableReady: false,
         generatedReports: INITIAL_GENERATED_REPORTS,
         reportingEngineState: 'engine',
         generatingReportType: null,
@@ -257,8 +247,6 @@ function getInitialAppState(): AppState {
     selectedAnalystId: null,
     analysisStatus: 'idle',
     analysisData: null,
-    widgetProductReportReady: false,
-    widgetKpiTableReady: false,
     generatedReports: INITIAL_GENERATED_REPORTS,
     reportingEngineState: 'engine',
     generatingReportType: null,
@@ -354,8 +342,7 @@ export const App: React.FC = () => {
   const setTickerInput = useCallback((value: string) => dispatch({ type: 'SET_TICKER_INPUT', payload: value }), []);
   const selectCompany = useCallback((company: Company) => dispatch({ type: 'SELECT_COMPANY', payload: company }), []);
   const runAnalysis = useCallback(() => dispatch({ type: 'RUN_ANALYSIS' }), []);
-  const setWidgetProductReportReady = useCallback(() => dispatch({ type: 'SET_WIDGET_PRODUCT_REPORT_READY' }), []);
-  const setWidgetKpiTableReady = useCallback(() => dispatch({ type: 'SET_WIDGET_KPI_TABLE_READY' }), []);
+  const setAnalysisStatus = useCallback((status: AnalysisStatus) => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: status }), []);
   const startGenerateReport = useCallback((reportType: ReportTypeId) => dispatch({ type: 'START_GENERATE_REPORT', payload: reportType }), []);
   const completeGenerateReport = useCallback((reportType: ReportTypeId) => dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: reportType }), []);
   const openReportViewer = useCallback((reportType: ReportTypeId) => dispatch({ type: 'OPEN_REPORT_VIEWER', payload: reportType }), []);
@@ -437,10 +424,7 @@ export const App: React.FC = () => {
               company={effectiveCompany}
               analysis={analysis}
               analysisStatus={state.analysisStatus}
-              widgetProductReportReady={state.widgetProductReportReady}
-              widgetKpiTableReady={state.widgetKpiTableReady}
-              onWidgetProductReportReady={setWidgetProductReportReady}
-              onWidgetKpiTableReady={setWidgetKpiTableReady}
+              onAnalysisStatusChange={setAnalysisStatus}
               onOpenReportingEngine={() => goToScreen('reporting-engine')}
             />
           )}
@@ -644,14 +628,36 @@ const ChooseAnalystScreen: React.FC<ChooseAnalystProps> = ({
 // Screen 3 — Processed Outputs (Workspace)
 // ---------------------------------------------------------------------------
 
+const WIDGET_1_DELAY_MS = 1200;
+const WIDGET_2_DELAY_MS = 2400;
+const COMPLETE_DELAY_MS = 3000;
+
+function getProgressMessage(status: AnalysisStatus): string {
+  switch (status) {
+    case 'idle':
+      return 'Ready to run analysis';
+    case 'running':
+      return 'Running analysis…';
+    case 'widget_1_complete':
+      return 'Loading KPI Table…';
+    case 'widget_2_complete':
+      return 'Finalizing…';
+    case 'complete':
+      return 'Analysis complete';
+    default:
+      return 'Running analysis…';
+  }
+}
+
+function getWidget1LoadingLabel(status: AnalysisStatus): string {
+  return status === 'running' ? 'Loading Product Report…' : 'Reconstructing business model and narrative…';
+}
+
 type WorkspaceProps = {
   company: Company;
   analysis: AnalysisOutput | null;
   analysisStatus: AnalysisStatus;
-  widgetProductReportReady: boolean;
-  widgetKpiTableReady: boolean;
-  onWidgetProductReportReady: () => void;
-  onWidgetKpiTableReady: () => void;
+  onAnalysisStatusChange: (status: AnalysisStatus) => void;
   onOpenReportingEngine: () => void;
 };
 
@@ -659,23 +665,30 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
   company,
   analysis,
   analysisStatus,
-  widgetProductReportReady,
-  widgetKpiTableReady,
-  onWidgetProductReportReady,
-  onWidgetKpiTableReady,
+  onAnalysisStatusChange,
   onOpenReportingEngine,
 }) => {
+  // Schedule status advances only when entering 'running'. Do not depend on analysisStatus
+  // so that when we transition to widget_1_complete the effect doesn't re-run and clear t2/t3.
   React.useEffect(() => {
     if (analysisStatus !== 'running') return;
-    const t1 = setTimeout(onWidgetProductReportReady, 1100);
-    const t2 = setTimeout(onWidgetKpiTableReady, 1700);
+    const t1 = setTimeout(() => onAnalysisStatusChange('widget_1_complete'), WIDGET_1_DELAY_MS);
+    const t2 = setTimeout(() => onAnalysisStatusChange('widget_2_complete'), WIDGET_2_DELAY_MS);
+    const t3 = setTimeout(() => onAnalysisStatusChange('complete'), COMPLETE_DELAY_MS);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
     };
-  }, [analysisStatus, onWidgetProductReportReady, onWidgetKpiTableReady]);
+  }, [onAnalysisStatusChange]);
 
-  const completedCount = Number(widgetProductReportReady) + Number(widgetKpiTableReady);
+  const widget1Visible =
+    (analysisStatus === 'widget_1_complete' || analysisStatus === 'widget_2_complete' || analysisStatus === 'complete') &&
+    !!analysis;
+  const widget2Visible =
+    (analysisStatus === 'widget_2_complete' || analysisStatus === 'complete') && !!analysis;
+  const completedCount =
+    analysisStatus === 'running' ? 0 : analysisStatus === 'widget_1_complete' ? 1 : 2;
   const allComplete = analysisStatus === 'complete';
 
   return (
@@ -714,10 +727,13 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
             <span className="widget-pill">Narrative Analysis</span>
           </div>
           <div className="widget-body">
-            {!widgetProductReportReady || !analysis ? (
-              <WidgetLoading label="Reconstructing business model and narrative..." />
+            {!widget1Visible ? (
+              <WidgetLoading
+                label={getWidget1LoadingLabel(analysisStatus)}
+                estimatedSeconds={WIDGET_1_DELAY_MS / 1000}
+              />
             ) : (
-              <ProductReportBody analysis={analysis} />
+              <ProductReportBody analysis={analysis!} />
             )}
           </div>
         </div>
@@ -733,10 +749,21 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
             <span className="widget-pill">KPI Trends</span>
           </div>
           <div className="widget-body">
-            {!widgetKpiTableReady || !analysis ? (
-              <WidgetLoading label="Aligning financial series and KPI trends..." />
+            {!widget2Visible ? (
+              <WidgetLoading
+                label={
+                  analysisStatus === 'widget_1_complete'
+                    ? 'Loading KPI Table…'
+                    : 'Aligning financial series and KPI trends…'
+                }
+                estimatedSeconds={
+                  analysisStatus === 'widget_1_complete'
+                    ? (WIDGET_2_DELAY_MS - WIDGET_1_DELAY_MS) / 1000
+                    : WIDGET_2_DELAY_MS / 1000
+                }
+              />
             ) : (
-              <KpiTable rows={analysis.kpiRows} />
+              <KpiTable rows={analysis!.kpiRows} />
             )}
           </div>
         </div>
@@ -745,8 +772,7 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
       <div className="progress-indicator progress-indicator-stacked">
         <div className="progress-indicator-row">
           <span className="progress-indicator-label">
-            {completedCount} of 2 widgets complete ·{' '}
-            {!allComplete ? 'Running structured analysis…' : 'Analysis complete'}
+            {completedCount} of 2 widgets complete · {getProgressMessage(analysisStatus)}
           </span>
           <div className="progress-bar-outer">
             <div
@@ -1025,7 +1051,10 @@ const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
 // Shared UI components
 // ---------------------------------------------------------------------------
 
-const WidgetLoading: React.FC<{ label: string }> = ({ label }) => (
+const WidgetLoading: React.FC<{ label: string; estimatedSeconds?: number }> = ({
+  label,
+  estimatedSeconds,
+}) => (
   <div className="widget-loading">
     <div className="spinner-dot-row">
       <span className="spinner-dot" />
@@ -1033,7 +1062,20 @@ const WidgetLoading: React.FC<{ label: string }> = ({ label }) => (
       <span className="spinner-dot" />
     </div>
     <div style={{ fontSize: 12 }}>{label}</div>
-    <div style={{ fontSize: 11, color: '#7075a0' }}>Processing…</div>
+    {estimatedSeconds != null && (
+      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
+        Estimated: ~{estimatedSeconds < 1 ? '<1s' : `${Math.round(estimatedSeconds)}s`}
+      </div>
+    )}
+    <div style={{ fontSize: 11, color: '#7075a0', marginTop: 2 }}>Processing…</div>
+    {estimatedSeconds != null && (
+      <div
+        className="widget-loading-progress-outer"
+        style={{ ['--widget-load-duration' as string]: `${estimatedSeconds}s` }}
+      >
+        <div className="widget-loading-progress-inner" />
+      </div>
+    )}
   </div>
 );
 
