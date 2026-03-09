@@ -3,12 +3,9 @@ import type { Company, ScreenId, AppAnalysisStatus, ReportTypeId } from './types
 import { appReducer, getInitialAppState, getPreviousScreen, hasAnyReportGenerated } from './state';
 import {
   getCompanyAnalysis,
-  getCompanyByTickerSync,
-  getAvailableTickers,
   getCompanyForDisplay,
   generateOverviewReport,
 } from './services';
-import { normalizeTicker, isTickerAvailable } from './utils/ticker';
 import { WorkflowStepper } from './components/layout';
 import {
   SelectCompanyScreen,
@@ -36,14 +33,9 @@ export const App: React.FC = () => {
   const openReportViewer = useCallback((reportType: ReportTypeId) => dispatch({ type: 'OPEN_REPORT_VIEWER', payload: reportType }), []);
   const selectReportToView = useCallback((reportType: ReportTypeId) => dispatch({ type: 'SELECT_REPORT_TO_VIEW', payload: reportType }), []);
 
-  const availableTickers = getAvailableTickers();
   const effectiveCompany = state.selectedCompany ?? getCompanyForDisplay(state.tickerInput);
   const canGoBack = getPreviousScreen(state.screen) !== null;
 
-  const normalizedInputTicker = normalizeTicker(state.tickerInput);
-  const tickerAvailable = isTickerAvailable(state.tickerInput, availableTickers);
-  const tickerUnavailable = normalizedInputTicker.length > 0 && !tickerAvailable;
-  const previewCompany = tickerAvailable ? getCompanyByTickerSync(state.tickerInput) : null;
   const analysis = state.analysisData?.analysis ?? null;
 
   const screensNeedingAnalysis: ScreenId[] = ['workspace', 'reporting-engine', 'report-viewer'];
@@ -150,10 +142,6 @@ export const App: React.FC = () => {
             <SelectCompanyScreen
               tickerInput={state.tickerInput}
               onTickerChange={setTickerInput}
-              previewCompany={previewCompany}
-              tickerUnavailable={tickerUnavailable}
-              normalizedTicker={normalizedInputTicker}
-              availableTickers={availableTickers}
               onCompanySelect={selectCompany}
             />
           )}

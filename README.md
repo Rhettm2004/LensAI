@@ -54,10 +54,10 @@ Screens and components receive data via props; no scattered duplicate state.
 - **Fallback:** Unknown/missing ticker uses `DEFAULT_TICKER` (`'MU'`) in mock layer.
 - **Structured:** KPI rows use `KpiRow[]` with `metric`, `value`, `trend`, `periodValues`. Report sections use `ReportSection[]` (`title`, `content`). Product Report and KPI Table are data-driven from `analysisData.analysis`.
 
-### Company “search”
+### Company search
 
-- User types a **ticker**; if it exactly matches a known ticker (case-insensitive), a preview card appears; clicking the card selects the company.
-- No type-ahead or partial match. `searchCompanies()` exists in `services/companyService.ts` but is **not used** by any screen.
+- User types in the search field; **Select Company** debounces input and calls **`searchCompanies(query)`** (async, mock delay). Results match **partial ticker or partial company name** (case-insensitive).
+- Suggestions render as **CompanyCard** list; click selects the company (`SELECT_COMPANY`); flow continues unchanged.
 
 ### Analysis workflow
 
@@ -90,7 +90,7 @@ src/
 ## Known gaps
 
 - **No URL routing** — No shareable links or browser back/forward; refresh loses position.
-- **Exact-ticker only** — No partial match or type-ahead; `searchCompanies` is unused.
+- ~~**Exact-ticker only**~~ — Replaced by `searchCompanies`-backed search (still mock dataset only).
 - **Report generation** — Overview is wired through `reportService` and `overviewReport` state; service still simulates delay only (no backend).
 - **Selected analyst unused** — `selectedAnalystId` exists in state but no UI sets it (only one analyst).
 - **Non-overview reports** — Valuation/industry/news show “not yet available” placeholder.
@@ -104,7 +104,7 @@ src/
 
 1. ~~**Wire report generation**~~ — Done: overview uses `generateOverviewReport` and `overviewReport` in state; next step is real backend/job polling.
 2. **Optional:** Add URL routing (e.g. hash or path for screen + ticker) for shareable state and refresh.
-3. **Optional:** Use `searchCompanies()` in Select Company for type-ahead (e.g. dropdown or list) instead of exact-ticker-only input.
+3. ~~**Optional: searchCompanies in Select Company**~~ — Done. Next: backend `GET /companies/search` and ranking/pagination.
 
 ---
 

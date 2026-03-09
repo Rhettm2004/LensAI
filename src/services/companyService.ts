@@ -13,17 +13,32 @@ import { getMockCompany, MOCK_TICKERS, DEFAULT_TICKER } from '../mock/data';
 const MOCK_DELAY_MS = 100;
 
 /**
- * Search companies by query (ticker or name).
+ * Search companies by query (partial ticker and/or partial name, case-insensitive).
  * In production this would call: GET /companies/search?q=...
+ * Mock scans the in-memory list; backend would return ranked results.
  */
 export async function searchCompanies(query: string): Promise<Company[]> {
   await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-  const q = (query || '').trim().toUpperCase();
-  if (q.length === 0) return [];
-  const matches = MOCK_TICKERS.filter(
-    (t) => t.includes(q) || t === q
-  );
-  return matches.map((ticker) => getMockCompany(ticker));
+  const raw = (query || '').trim();
+  if (raw.length === 0) return [];
+
+  const q = raw.toLowerCase();
+  const seen = new Set<string>();
+  const out: Company[] = [];
+
+  for (const ticker of MOCK_TICKERS) {
+    const company = getMockCompany(ticker);
+    const tickerLower = company.ticker.toLowerCase();
+    const nameLower = company.name.toLowerCase();
+    if (tickerLower.includes(q) || nameLower.includes(q)) {
+      if (!seen.has(company.ticker)) {
+        seen.add(company.ticker);
+        out.push(company);
+      }
+    }
+  }
+
+  return out;
 }
 
 /**
