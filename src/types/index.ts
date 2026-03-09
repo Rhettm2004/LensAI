@@ -67,6 +67,8 @@ export interface CompanyAnalysisResponse {
 export interface OverviewReportResult {
   reportType: 'overview';
   sections: ReportSection[];
+  /** Snapshot from analysis at generation time so Report Viewer can render without re-reading analysis. */
+  kpiRows: KpiRow[];
 }
 
 // Re-export app state types for convenience

@@ -63,7 +63,7 @@ Screens and components receive data via props; no scattered duplicate state.
 
 - **Run Analysis** → Reducer sets `screen: 'workspace'`, `analysisStatus: 'running'`, `analysisData: null`. App then fetches via `getCompanyAnalysis(ticker)` and dispatches `SET_ANALYSIS_DATA`.
 - **Staged loading:** After analysis data is set, timers (1.2s, 2.4s, 3s) advance status so Product Report appears first, then KPI Table, then “complete”. CTA “Open Reporting Engine” is disabled until `analysisStatus === 'complete'`.
-- **Report “generation”:** Clicking Generate sets a 1.4s timer then flips `generatedReports.overview`. **No call to `reportService.generateOverviewReport()`**; Report Viewer reads the same `analysisData.analysis` already in state. So generation is simulated (flag only).
+- **Report generation (overview):** Clicking Generate sets `reportingEngineState` to generating; **App** calls `generateOverviewReport({ ticker, analysis })` (service still uses a mock delay). On resolve, reducer stores `overviewReport` and sets `generatedReports.overview`. Report Viewer reads **`state.overviewReport`** (sections + kpiRows snapshot), not raw analysis.
 
 ### Architecture
 
@@ -83,7 +83,7 @@ src/
 
 - **Separation:** Screens are thin; state in reducer; data behind services; mock isolated; types centralized.
 - **Services:** All data access goes through `services/`. Mock is only imported there; UI never imports mock. Service APIs are async and documented for future backend swap (e.g. `GET /companies/search`, `POST /analysis/run`).
-- **Report service:** `generateOverviewReport()` is implemented but not called in the app; Reporting Engine uses a timer only.
+- **Report service:** `generateOverviewReport()` is called from `App.tsx` when the Reporting Engine enters generating state for overview; result is stored in `overviewReport`.
 
 ---
 
@@ -91,7 +91,7 @@ src/
 
 - **No URL routing** — No shareable links or browser back/forward; refresh loses position.
 - **Exact-ticker only** — No partial match or type-ahead; `searchCompanies` is unused.
-- **Report generation is simulated** — Timer only; `reportService` is not wired in.
+- **Report generation** — Overview is wired through `reportService` and `overviewReport` state; service still simulates delay only (no backend).
 - **Selected analyst unused** — `selectedAnalystId` exists in state but no UI sets it (only one analyst).
 - **Non-overview reports** — Valuation/industry/news show “not yet available” placeholder.
 - **Default ticker MU** — Fallback for unknown ticker is Micron (in mock).
@@ -102,7 +102,7 @@ src/
 
 ## Recommended next steps
 
-1. **Wire report generation** — Call `generateOverviewReport({ ticker, analysis })` when user clicks Generate (overview); store result and have Report Viewer read it so the report service is used end-to-end.
+1. ~~**Wire report generation**~~ — Done: overview uses `generateOverviewReport` and `overviewReport` in state; next step is real backend/job polling.
 2. **Optional:** Add URL routing (e.g. hash or path for screen + ticker) for shareable state and refresh.
 3. **Optional:** Use `searchCompanies()` in Select Company for type-ahead (e.g. dropdown or list) instead of exact-ticker-only input.
 

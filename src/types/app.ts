@@ -3,7 +3,7 @@
  * Kept separate from domain types (Company, AnalysisOutput, etc.).
  */
 
-import type { Company, CompanyAnalysisResponse } from './index';
+import type { Company, CompanyAnalysisResponse, OverviewReportResult } from './index';
 
 export type ScreenId =
   | 'select-company'
@@ -42,6 +42,11 @@ export type AppState = {
   analysisStatus: AnalysisStatus;
   /** Loaded from data service when user runs analysis; drives workspace and report content. */
   analysisData: CompanyAnalysisResponse | null;
+  /**
+   * Generated overview report from report service; set only after generateOverviewReport resolves.
+   * Null after RUN_ANALYSIS / flow reset so regeneration always starts clean.
+   */
+  overviewReport: OverviewReportResult | null;
   generatedReports: GeneratedReports;
   reportingEngineState: ReportingEngineState;
   generatingReportType: ReportTypeId | null;

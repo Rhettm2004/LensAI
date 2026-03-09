@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Company, AnalysisOutput, GeneratedReports, ReportTypeId } from '../types';
+import type { Company, GeneratedReports, OverviewReportResult, ReportTypeId } from '../types';
 import { getReportTypeLabel } from '../state';
 import { KpiTable } from '../components/widgets';
 
@@ -8,7 +8,8 @@ const KPI_SECTION_TITLE = 'Financials (KPI Snapshot)';
 
 export type ReportViewerScreenProps = {
   company: Company;
-  analysis: AnalysisOutput | null;
+  /** Generated overview from report service; drives overview tab content. */
+  overviewReport: OverviewReportResult | null;
   generatedReports: GeneratedReports;
   activeReportType: ReportTypeId | null;
   onSelectReport: (reportType: ReportTypeId) => void;
@@ -16,7 +17,7 @@ export type ReportViewerScreenProps = {
 
 export const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
   company,
-  analysis,
+  overviewReport,
   generatedReports,
   activeReportType,
   onSelectReport,
@@ -36,8 +37,8 @@ export const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
   }, [generatedList.length, activeReportType, onSelectReport]);
 
   const reportTitle = effectiveReportType ? getReportTypeLabel(effectiveReportType) : 'Report';
-  const reportSections = analysis?.reportSections ?? [];
-  const kpiRows = analysis?.kpiRows ?? [];
+  const reportSections = overviewReport?.sections ?? [];
+  const kpiRows = overviewReport?.kpiRows ?? [];
 
   return (
     <div>

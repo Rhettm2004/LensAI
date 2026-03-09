@@ -26,5 +26,6 @@ export async function generateOverviewReport(
 ): Promise<OverviewReportResult> {
   await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
   const sections: ReportSection[] = input.analysis.reportSections ?? [];
-  return { reportType: 'overview', sections };
+  const kpiRows = input.analysis.kpiRows ?? [];
+  return { reportType: 'overview', sections, kpiRows };
 }

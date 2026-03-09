@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useReducer } from 'react';
 import type { Company, ScreenId, AppAnalysisStatus, ReportTypeId } from './types';
 import { appReducer, getInitialAppState, getPreviousScreen, hasAnyReportGenerated } from './state';
-import { getCompanyAnalysis, getCompanyByTickerSync, getAvailableTickers, getCompanyForDisplay } from './services';
+import {
+  getCompanyAnalysis,
+  getCompanyByTickerSync,
+  getAvailableTickers,
+  getCompanyForDisplay,
+  generateOverviewReport,
+} from './services';
 import { normalizeTicker, isTickerAvailable } from './utils/ticker';
 import { WorkflowStepper } from './components/layout';
 import {
@@ -23,7 +29,10 @@ export const App: React.FC = () => {
   const runAnalysis = useCallback(() => dispatch({ type: 'RUN_ANALYSIS' }), []);
   const setAnalysisStatus = useCallback((status: AppAnalysisStatus) => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: status }), []);
   const startGenerateReport = useCallback((reportType: ReportTypeId) => dispatch({ type: 'START_GENERATE_REPORT', payload: reportType }), []);
-  const completeGenerateReport = useCallback((reportType: ReportTypeId) => dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: reportType }), []);
+  const generateReportFailed = useCallback(
+    (reportType: ReportTypeId) => dispatch({ type: 'GENERATE_REPORT_FAILED', payload: reportType }),
+    []
+  );
   const openReportViewer = useCallback((reportType: ReportTypeId) => dispatch({ type: 'OPEN_REPORT_VIEWER', payload: reportType }), []);
   const selectReportToView = useCallback((reportType: ReportTypeId) => dispatch({ type: 'SELECT_REPORT_TO_VIEW', payload: reportType }), []);
 
@@ -71,6 +80,38 @@ export const App: React.FC = () => {
       clearTimeout(t3);
     };
   }, [state.screen, state.analysisData]);
+
+  // Overview report generation: call report service once engine enters generating state; no duplicate timers.
+  useEffect(() => {
+    if (
+      state.reportingEngineState !== 'generating' ||
+      state.generatingReportType !== 'overview' ||
+      !state.selectedCompany ||
+      !analysis
+    ) {
+      return;
+    }
+    let cancelled = false;
+    const ticker = state.selectedCompany.ticker;
+    generateOverviewReport({ ticker, analysis })
+      .then((result) => {
+        if (!cancelled) {
+          dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: { reportType: 'overview', result } });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) generateReportFailed('overview');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    state.reportingEngineState,
+    state.generatingReportType,
+    state.selectedCompany?.ticker,
+    analysis,
+    generateReportFailed,
+  ]);
 
   return (
     <div className="app-root">
@@ -138,14 +179,13 @@ export const App: React.FC = () => {
               reportingEngineState={state.reportingEngineState}
               generatingReportType={state.generatingReportType}
               onStartGenerateReport={startGenerateReport}
-              onCompleteGenerateReport={completeGenerateReport}
               onOpenReportViewer={openReportViewer}
             />
           )}
           {state.screen === 'report-viewer' && (
             <ReportViewerScreen
               company={effectiveCompany}
-              analysis={analysis}
+              overviewReport={state.overviewReport}
               generatedReports={state.generatedReports}
               activeReportType={state.activeReportType}
               onSelectReport={selectReportToView}
