@@ -1,7 +1,19 @@
-import React, { useCallback, useReducer } from 'react';
+import React, { useCallback, useEffect, useReducer } from 'react';
+import type { AnalysisOutput, Company, CompanyAnalysisResponse, KpiRow } from './types';
+import { DEFAULT_TICKER, getMockCompany, MOCK_TICKERS } from './mock/data';
+
+function normalizeTicker(ticker: string): string {
+  return (ticker || '').trim().toUpperCase();
+}
+
+function isTickerAvailable(ticker: string): boolean {
+  const n = normalizeTicker(ticker);
+  return n.length > 0 && MOCK_TICKERS.includes(n);
+}
+import { getCompanyAnalysis } from './services/analysisService';
 
 // ---------------------------------------------------------------------------
-// Types
+// Types (app / UI state)
 // ---------------------------------------------------------------------------
 
 export type ScreenId =
@@ -11,14 +23,7 @@ export type ScreenId =
   | 'reporting-engine'
   | 'report-viewer';
 
-export type Company = {
-  name: string;
-  ticker: string;
-  exchange: string;
-  marketCap: string;
-  sector: string;
-  industry: string;
-};
+export type { Company };
 
 export type AnalystId = 'fundamental';
 
@@ -42,6 +47,8 @@ export type AppState = {
   selectedCompany: Company | null;
   selectedAnalystId: AnalystId | null;
   analysisStatus: AnalysisStatus;
+  /** Loaded from data service when user runs analysis; drives workspace and report content. */
+  analysisData: CompanyAnalysisResponse | null;
   widgetProductReportReady: boolean;
   widgetKpiTableReady: boolean;
   generatedReports: GeneratedReports;
@@ -117,6 +124,7 @@ type AppAction =
   | { type: 'SELECT_COMPANY'; payload: Company }
   | { type: 'SELECT_ANALYST'; payload: AnalystId }
   | { type: 'RUN_ANALYSIS' }
+  | { type: 'SET_ANALYSIS_DATA'; payload: CompanyAnalysisResponse }
   | { type: 'SET_WIDGET_PRODUCT_REPORT_READY' }
   | { type: 'SET_WIDGET_KPI_TABLE_READY' }
   | { type: 'RESET_FLOW' }
@@ -162,6 +170,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         screen: 'workspace',
         maxStepReached: Math.max(state.maxStepReached, 2),
         analysisStatus: 'running',
+        analysisData: null,
         widgetProductReportReady: false,
         widgetKpiTableReady: false,
         generatedReports: INITIAL_GENERATED_REPORTS,
@@ -169,6 +178,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
         generatingReportType: null,
         activeReportType: null,
       };
+
+    case 'SET_ANALYSIS_DATA':
+      return { ...state, analysisData: action.payload };
 
     case 'SET_WIDGET_PRODUCT_REPORT_READY':
       return { ...state, widgetProductReportReady: true };
@@ -189,6 +201,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...getInitialAppState(),
         screen: 'select-company',
+        analysisData: null,
       };
 
     case 'CHANGE_ANALYST':
@@ -243,6 +256,7 @@ function getInitialAppState(): AppState {
     selectedCompany: null,
     selectedAnalystId: null,
     analysisStatus: 'idle',
+    analysisData: null,
     widgetProductReportReady: false,
     widgetKpiTableReady: false,
     generatedReports: INITIAL_GENERATED_REPORTS,
@@ -253,47 +267,11 @@ function getInitialAppState(): AppState {
 }
 
 // ---------------------------------------------------------------------------
-// Data (placeholder)
+// Company resolution (for select screen; uses mock; later can use API)
 // ---------------------------------------------------------------------------
 
-const SAMPLE_COMPANIES: Record<string, Company> = {
-  AAPL: {
-    name: 'Apple Inc.',
-    ticker: 'AAPL',
-    exchange: 'NASDAQ',
-    marketCap: '$2.72T',
-    sector: 'Technology',
-    industry: 'Consumer Electronics',
-  },
-  MU: {
-    name: 'Micron Technology, Inc.',
-    ticker: 'MU',
-    exchange: 'NASDAQ',
-    marketCap: '$126B',
-    sector: 'Technology',
-    industry: 'Semiconductors',
-  },
-};
-
-const DEFAULT_COMPANY: Company = SAMPLE_COMPANIES.MU;
-
-type KpiRow = {
-  label: string;
-  fy21: string;
-  fy22: string;
-  fy23: string;
-  fy24: string;
-};
-
-const SAMPLE_KPIS: KpiRow[] = [
-  { label: 'Revenue', fy21: '$120m', fy22: '$145m', fy23: '$171m', fy24: '$210m' },
-  { label: 'EBITDA', fy21: '$18m', fy22: '$23m', fy23: '$30m', fy24: '$42m' },
-  { label: 'Free Cash Flow', fy21: '$12m', fy22: '$15m', fy23: '$21m', fy24: '$29m' },
-];
-
 function getCompanyFromTicker(ticker: string): Company {
-  const normalized = (ticker || '').trim().toUpperCase();
-  return normalized ? (SAMPLE_COMPANIES[normalized] ?? DEFAULT_COMPANY) : DEFAULT_COMPANY;
+  return getMockCompany(ticker || DEFAULT_TICKER);
 }
 
 // ---------------------------------------------------------------------------
@@ -386,6 +364,25 @@ export const App: React.FC = () => {
   const effectiveCompany = state.selectedCompany ?? getCompanyFromTicker(state.tickerInput);
   const canGoBack = getPreviousScreen(state.screen) !== null;
 
+  const normalizedInputTicker = normalizeTicker(state.tickerInput);
+  const tickerAvailable = isTickerAvailable(state.tickerInput);
+  const tickerUnavailable = normalizedInputTicker.length > 0 && !tickerAvailable;
+  const previewCompany = tickerAvailable ? getMockCompany(state.tickerInput) : null;
+  const analysis = state.analysisData?.analysis ?? null;
+
+  const screensNeedingAnalysis: ScreenId[] = ['workspace', 'reporting-engine', 'report-viewer'];
+  const needsAnalysisData = screensNeedingAnalysis.includes(state.screen) && state.selectedCompany;
+  const hasStaleOrNoAnalysis =
+    !state.analysisData || state.analysisData.company.ticker !== state.selectedCompany?.ticker;
+
+  // Fetch company + analysis when on a screen that needs it and data is missing or for a different company.
+  useEffect(() => {
+    if (!needsAnalysisData || !hasStaleOrNoAnalysis) return;
+    getCompanyAnalysis(state.selectedCompany!.ticker).then((data) =>
+      dispatch({ type: 'SET_ANALYSIS_DATA', payload: data })
+    );
+  }, [state.screen, state.selectedCompany?.ticker, state.analysisData, needsAnalysisData, hasStaleOrNoAnalysis]);
+
   return (
     <div className="app-root">
       <div className="app-shell">
@@ -423,7 +420,9 @@ export const App: React.FC = () => {
             <SelectCompanyScreen
               tickerInput={state.tickerInput}
               onTickerChange={setTickerInput}
-              company={effectiveCompany}
+              previewCompany={previewCompany}
+              tickerUnavailable={tickerUnavailable}
+              normalizedTicker={normalizedInputTicker}
               onCompanySelect={selectCompany}
             />
           )}
@@ -436,7 +435,7 @@ export const App: React.FC = () => {
           {state.screen === 'workspace' && (
             <WorkspaceScreen
               company={effectiveCompany}
-              kpis={SAMPLE_KPIS}
+              analysis={analysis}
               analysisStatus={state.analysisStatus}
               widgetProductReportReady={state.widgetProductReportReady}
               widgetKpiTableReady={state.widgetKpiTableReady}
@@ -459,7 +458,7 @@ export const App: React.FC = () => {
           {state.screen === 'report-viewer' && (
             <ReportViewerScreen
               company={effectiveCompany}
-              kpis={SAMPLE_KPIS}
+              analysis={analysis}
               generatedReports={state.generatedReports}
               activeReportType={state.activeReportType}
               onSelectReport={selectReportToView}
@@ -484,17 +483,21 @@ export const App: React.FC = () => {
 type SelectCompanyProps = {
   tickerInput: string;
   onTickerChange: (value: string) => void;
-  company: Company;
+  previewCompany: Company | null;
+  tickerUnavailable: boolean;
+  normalizedTicker: string;
   onCompanySelect: (company: Company) => void;
 };
 
 const SelectCompanyScreen: React.FC<SelectCompanyProps> = ({
   tickerInput,
   onTickerChange,
-  company,
+  previewCompany,
+  tickerUnavailable,
+  normalizedTicker,
   onCompanySelect,
 }) => {
-  const handleCardClick = () => onCompanySelect(company);
+  const handleCardClick = () => previewCompany && onCompanySelect(previewCompany);
 
   return (
     <div className="screen-centered">
@@ -508,20 +511,37 @@ const SelectCompanyScreen: React.FC<SelectCompanyProps> = ({
 
       <input
         className="input-underline"
-        placeholder="Enter ticker (e.g. AAPL, MU)"
+        placeholder="Enter ticker (e.g. AAPL, MU, MSFT, NVDA)"
         value={tickerInput}
         maxLength={8}
         onChange={(e) => onTickerChange(e.target.value)}
       />
 
-      {!!tickerInput.trim() && (
+      {tickerUnavailable && (
+        <div
+          role="alert"
+          style={{
+            marginTop: 12,
+            padding: '10px 12px',
+            borderRadius: 8,
+            background: 'rgba(220, 80, 80, 0.12)',
+            border: '1px solid rgba(220, 80, 80, 0.35)',
+            color: '#e8a0a0',
+            fontSize: 13,
+          }}
+        >
+          Ticker &quot;{normalizedTicker}&quot; is not available. Available tickers: {MOCK_TICKERS.join(', ')}.
+        </div>
+      )}
+
+      {previewCompany && (
         <button type="button" className="company-card" onClick={handleCardClick}>
-          <div className="company-logo">{company.ticker?.[0] ?? '?'}</div>
+          <div className="company-logo">{previewCompany.initial ?? previewCompany.ticker?.[0] ?? '?'}</div>
           <div className="company-main">
-            <div className="company-name">{company.name}</div>
-            <div className="company-ticker">{company.ticker}</div>
+            <div className="company-name">{previewCompany.name}</div>
+            <div className="company-ticker">{previewCompany.ticker}</div>
             <div className="company-meta">
-              {company.exchange} · {company.marketCap} · {company.sector} · {company.industry}
+              {previewCompany.exchange} · {previewCompany.marketCap} · {previewCompany.sector} · {previewCompany.industry}
             </div>
           </div>
           <div className="pill-tag">Continue</div>
@@ -626,7 +646,7 @@ const ChooseAnalystScreen: React.FC<ChooseAnalystProps> = ({
 
 type WorkspaceProps = {
   company: Company;
-  kpis: KpiRow[];
+  analysis: AnalysisOutput | null;
   analysisStatus: AnalysisStatus;
   widgetProductReportReady: boolean;
   widgetKpiTableReady: boolean;
@@ -637,7 +657,7 @@ type WorkspaceProps = {
 
 const WorkspaceScreen: React.FC<WorkspaceProps> = ({
   company,
-  kpis,
+  analysis,
   analysisStatus,
   widgetProductReportReady,
   widgetKpiTableReady,
@@ -694,10 +714,10 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
             <span className="widget-pill">Narrative Analysis</span>
           </div>
           <div className="widget-body">
-            {!widgetProductReportReady ? (
+            {!widgetProductReportReady || !analysis ? (
               <WidgetLoading label="Reconstructing business model and narrative..." />
             ) : (
-              <ProductReportBody company={company} />
+              <ProductReportBody analysis={analysis} />
             )}
           </div>
         </div>
@@ -713,10 +733,10 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
             <span className="widget-pill">KPI Trends</span>
           </div>
           <div className="widget-body">
-            {!widgetKpiTableReady ? (
+            {!widgetKpiTableReady || !analysis ? (
               <WidgetLoading label="Aligning financial series and KPI trends..." />
             ) : (
-              <KpiTable rows={kpis} />
+              <KpiTable rows={analysis.kpiRows} />
             )}
           </div>
         </div>
@@ -873,15 +893,18 @@ const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
 
 type ReportViewerScreenProps = {
   company: Company;
-  kpis: KpiRow[];
+  analysis: AnalysisOutput | null;
   generatedReports: GeneratedReports;
   activeReportType: ReportTypeId | null;
   onSelectReport: (reportType: ReportTypeId) => void;
 };
 
+const LIST_SECTION_TITLES = ['Key Positives', 'Key Negatives'];
+const KPI_SECTION_TITLE = 'Financials (KPI Snapshot)';
+
 const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
   company,
-  kpis,
+  analysis,
   generatedReports,
   activeReportType,
   onSelectReport,
@@ -900,6 +923,8 @@ const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
   }, [generatedList.length, activeReportType, onSelectReport]);
 
   const reportTitle = effectiveReportType ? getReportTypeLabel(effectiveReportType) : 'Report';
+  const reportSections = analysis?.reportSections ?? [];
+  const kpiRows = analysis?.kpiRows ?? [];
 
   return (
     <div>
@@ -943,77 +968,42 @@ const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
         </div>
       )}
 
-      {effectiveReportType === 'overview' && (
+      {effectiveReportType === 'overview' && reportSections.length > 0 && (
         <div className="report-layout">
           <div>
-            <div className="report-section">
-              <div className="report-section-title">Company Summary</div>
-              <div className="report-body">
-                {company.name} is a leading {company.industry.toLowerCase()} company within the{' '}
-                {company.sector.toLowerCase()} sector, listed on the {company.exchange}. The business
-                generates revenue primarily through a scaled, globally distributed franchise with a
-                mix of hardware, software, and services exposure depending on the underlying business
-                model. LensAI&apos;s V0 analysis focuses on reconstructing a simplified but coherent
-                view of the company&apos;s economic engine and market positioning.
-              </div>
-            </div>
-            <div className="report-section" style={{ marginTop: 10 }}>
-              <div className="report-section-title">Investment Thesis</div>
-              <div className="report-body">
-                The core investment case for {company.name} is anchored in durable competitive
-                advantages, a resilient balance sheet, and an ability to compound free cash flow over
-                time. Near-term earnings may remain sensitive to macro conditions and industry
-                cyclicality, but the company&apos;s strategic position, scale, and product depth
-                provide a platform for continued value creation. We see the risk / reward profile as
-                balanced around execution on product roadmap, capital allocation discipline, and
-                maintaining pricing power in key segments.
-              </div>
-            </div>
-            <div className="report-section" style={{ marginTop: 10 }}>
-              <div className="report-section-title">Key Positives</div>
-              <div className="report-body">
-                <ul className="bullet-list">
-                  <li>Scaled, globally recognised franchise in a structurally attractive market.</li>
-                  <li>Strong historical revenue and EBITDA trajectory with improving cash generation.</li>
-                  <li>Robust balance sheet flexibility to fund R&amp;D, capex, and shareholder returns.</li>
-                  <li>Differentiated technology stack and product ecosystem supporting switching costs.</li>
-                </ul>
-              </div>
-            </div>
-            <div className="report-section" style={{ marginTop: 10 }}>
-              <div className="report-section-title">Key Negatives</div>
-              <div className="report-body">
-                <ul className="bullet-list">
-                  <li>Exposure to macro and industry cycles can drive earnings volatility.</li>
-                  <li>Competitive intensity from peers and new entrants in core profit pools.</li>
-                  <li>Ongoing capex and R&amp;D requirements to sustain technology leadership.</li>
-                  <li>Regulatory, geopolitical, and supply chain risks across key regions.</li>
-                </ul>
-              </div>
-            </div>
+            {reportSections
+              .filter((s) => s.title !== KPI_SECTION_TITLE && s.title !== 'Credit & ESG')
+              .map((section) => (
+                <div key={section.title} className="report-section" style={{ marginTop: 10 }}>
+                  <div className="report-section-title">{section.title}</div>
+                  <div className="report-body">
+                    {LIST_SECTION_TITLES.includes(section.title) && section.content.includes('\n') ? (
+                      <ul className="bullet-list">
+                        {section.content.split('\n').filter(Boolean).map((line, i) => (
+                          <li key={i}>{line.trim()}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      section.content
+                    )}
+                  </div>
+                </div>
+              ))}
           </div>
           <div>
-            <div className="report-section">
-              <div className="report-section-title">Financials (KPI Snapshot)</div>
-              <div className="report-body">
-                The table below summarises simplified historical KPIs reconstructed for illustration.
-                Values are placeholders designed to demonstrate LensAI&apos;s structured output
-                format rather than formal financial guidance.
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <KpiTable rows={kpis} />
-              </div>
-            </div>
-            <div className="report-section" style={{ marginTop: 10 }}>
-              <div className="report-section-title">Credit &amp; ESG</div>
-              <div className="report-body">
-                Credit quality is assumed to be investment grade, underpinned by scale, cash flow
-                visibility, and access to diversified funding markets. From an ESG perspective, the
-                company&apos;s profile reflects both the opportunities and responsibilities associated
-                with operating a large, global technology platform, including data privacy, workforce
-                practices, and environmental footprint across the supply chain.
-              </div>
-            </div>
+            {reportSections
+              .filter((s) => s.title === KPI_SECTION_TITLE || s.title === 'Credit & ESG')
+              .map((section) => (
+                <div key={section.title} className="report-section" style={{ marginTop: 10 }}>
+                  <div className="report-section-title">{section.title}</div>
+                  <div className="report-body">{section.content}</div>
+                  {section.title === KPI_SECTION_TITLE && kpiRows.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      <KpiTable rows={kpiRows} />
+                    </div>
+                  )}
+                </div>
+              ))}
           </div>
         </div>
       )}
@@ -1047,59 +1037,47 @@ const WidgetLoading: React.FC<{ label: string }> = ({ label }) => (
   </div>
 );
 
-const KpiTable: React.FC<{ rows: KpiRow[] }> = ({ rows }) => (
-  <table className="kpi-table">
-    <thead>
-      <tr>
-        <th>KPI</th>
-        <th>FY21</th>
-        <th>FY22</th>
-        <th>FY23</th>
-        <th>FY24</th>
-      </tr>
-    </thead>
-    <tbody>
-      {rows.map((row) => (
-        <tr key={row.label}>
-          <td>{row.label}</td>
-          <td>{row.fy21}</td>
-          <td>{row.fy22}</td>
-          <td>{row.fy23}</td>
-          <td>{row.fy24}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-);
+const KPI_PERIOD_ORDER = ['FY21', 'FY22', 'FY23', 'FY24'];
 
-const ProductReportBody: React.FC<{ company: Company }> = ({ company }) => (
+const KpiTable: React.FC<{ rows: KpiRow[] }> = ({ rows }) => {
+  const periods = rows[0]?.periodValues ? KPI_PERIOD_ORDER.filter((p) => p in (rows[0].periodValues ?? {})) : [];
+  const usePeriods = periods.length > 0;
+
+  return (
+    <table className="kpi-table">
+      <thead>
+        <tr>
+          <th>KPI</th>
+          {usePeriods ? periods.map((p) => <th key={p}>{p}</th>) : <th>Value</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.metric}>
+            <td>{row.metric}</td>
+            {usePeriods
+              ? periods.map((p) => <td key={p}>{row.periodValues?.[p] ?? '—'}</td>)
+              : <td>{row.value}</td>}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
+const ProductReportBody: React.FC<{ analysis: AnalysisOutput }> = ({ analysis }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
     <div style={{ fontSize: 13, color: '#f5f6fa' }}>
       <strong>Business model overview</strong>
     </div>
-    <div style={{ fontSize: 13 }}>
-      {company.name} operates a diversified business model anchored in high-value technology
-      products and services. Revenue is driven by a mix of core platform offerings, adjacent
-      product lines, and recurring software and services, with a focus on scaling unit
-      economics rather than purely maximising volume.
-    </div>
+    <div style={{ fontSize: 13 }}>{analysis.businessModelOverview}</div>
     <div style={{ fontSize: 13, marginTop: 4 }}>
       <strong>Revenue drivers</strong>
     </div>
-    <div style={{ fontSize: 13 }}>
-      Key revenue drivers include installed base growth, product refresh cycles, and
-      monetisation of value-added services layered on top of core hardware and infrastructure.
-      Over time, mix is expected to tilt toward higher-margin, recurring streams as the
-      franchise matures.
-    </div>
+    <div style={{ fontSize: 13 }}>{analysis.revenueDrivers}</div>
     <div style={{ fontSize: 13, marginTop: 4 }}>
       <strong>Industry positioning</strong>
     </div>
-    <div style={{ fontSize: 13 }}>
-      Within the broader {company.sector.toLowerCase()} landscape, {company.name} is positioned
-      as a scaled leader with meaningful share in its target categories. Competitive advantages
-      are driven by ecosystem depth, technology capabilities, and the ability to invest through
-      cycles, supporting a defensible long-term return profile.
-    </div>
+    <div style={{ fontSize: 13 }}>{analysis.industryPositioning}</div>
   </div>
 );
