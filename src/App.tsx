@@ -46,6 +46,7 @@ export type AppState = {
   widgetKpiTableReady: boolean;
   generatedReports: GeneratedReports;
   reportingEngineState: ReportingEngineState;
+  generatingReportType: ReportTypeId | null;
   activeReportType: ReportTypeId | null;
 };
 
@@ -76,8 +77,24 @@ const INITIAL_GENERATED_REPORTS: GeneratedReports = {
   news: false,
 };
 
+const REPORT_TYPE_CONFIG: {
+  id: ReportTypeId;
+  label: string;
+  description: string;
+  availableInV0: boolean;
+}[] = [
+  { id: 'overview', label: 'Overview Report', description: 'Professional initiation report with company summary, investment thesis, financials, key positives/negatives, and credit/ESG notes.', availableInV0: true },
+  { id: 'valuation', label: 'Valuation Analysis', description: 'DCF, comparable multiples, and sum-of-the-parts analysis.', availableInV0: false },
+  { id: 'industry', label: 'Industry Comparison', description: 'Peer comparison and relative positioning within the sector.', availableInV0: false },
+  { id: 'news', label: 'News Impact', description: 'Recent news and events affecting the investment case.', availableInV0: false },
+];
+
 function hasAnyReportGenerated(g: GeneratedReports): boolean {
   return g.overview || g.valuation || g.industry || g.news;
+}
+
+function getReportTypeLabel(id: ReportTypeId): string {
+  return REPORT_TYPE_CONFIG.find((r) => r.id === id)?.label ?? id;
 }
 
 function getPreviousScreen(screen: ScreenId): ScreenId | null {
@@ -108,6 +125,7 @@ type AppAction =
   | { type: 'START_GENERATE_REPORT'; payload: ReportTypeId }
   | { type: 'COMPLETE_GENERATE_REPORT'; payload: ReportTypeId }
   | { type: 'OPEN_REPORT_VIEWER'; payload: ReportTypeId }
+  | { type: 'SELECT_REPORT_TO_VIEW'; payload: ReportTypeId }
   | { type: 'BACK_TO_REPORTING_ENGINE' };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -148,6 +166,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         widgetKpiTableReady: false,
         generatedReports: INITIAL_GENERATED_REPORTS,
         reportingEngineState: 'engine',
+        generatingReportType: null,
         activeReportType: null,
       };
 
@@ -181,14 +200,15 @@ function appReducer(state: AppState, action: AppAction): AppState {
         widgetKpiTableReady: false,
         generatedReports: INITIAL_GENERATED_REPORTS,
         reportingEngineState: 'engine',
+        generatingReportType: null,
         activeReportType: null,
       };
 
     case 'START_GENERATE_REPORT':
-      return { ...state, reportingEngineState: 'generating' };
+      return { ...state, reportingEngineState: 'generating', generatingReportType: action.payload };
 
     case 'COMPLETE_GENERATE_REPORT': {
-      const next = { ...state, reportingEngineState: 'engine' as const };
+      const next = { ...state, reportingEngineState: 'engine' as const, generatingReportType: null };
       if (action.payload === 'overview') next.generatedReports = { ...state.generatedReports, overview: true };
       if (action.payload === 'valuation') next.generatedReports = { ...state.generatedReports, valuation: true };
       if (action.payload === 'industry') next.generatedReports = { ...state.generatedReports, industry: true };
@@ -203,6 +223,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
         activeReportType: action.payload,
         maxStepReached: Math.max(state.maxStepReached, 4),
       };
+
+    case 'SELECT_REPORT_TO_VIEW':
+      return { ...state, activeReportType: action.payload };
 
     case 'BACK_TO_REPORTING_ENGINE':
       return { ...state, screen: 'reporting-engine', activeReportType: null };
@@ -224,6 +247,7 @@ function getInitialAppState(): AppState {
     widgetKpiTableReady: false,
     generatedReports: INITIAL_GENERATED_REPORTS,
     reportingEngineState: 'engine',
+    generatingReportType: null,
     activeReportType: null,
   };
 }
@@ -348,8 +372,6 @@ export const App: React.FC = () => {
   const goToScreen = useCallback((screen: ScreenId) => dispatch({ type: 'GO_TO_SCREEN', payload: screen }), []);
   const goBack = useCallback(() => dispatch({ type: 'GO_BACK' }), []);
   const resetFlow = useCallback(() => dispatch({ type: 'RESET_FLOW' }), []);
-  const changeCompany = useCallback(() => dispatch({ type: 'CHANGE_COMPANY' }), []);
-  const changeAnalyst = useCallback(() => dispatch({ type: 'CHANGE_ANALYST' }), []);
 
   const setTickerInput = useCallback((value: string) => dispatch({ type: 'SET_TICKER_INPUT', payload: value }), []);
   const selectCompany = useCallback((company: Company) => dispatch({ type: 'SELECT_COMPANY', payload: company }), []);
@@ -359,7 +381,7 @@ export const App: React.FC = () => {
   const startGenerateReport = useCallback((reportType: ReportTypeId) => dispatch({ type: 'START_GENERATE_REPORT', payload: reportType }), []);
   const completeGenerateReport = useCallback((reportType: ReportTypeId) => dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: reportType }), []);
   const openReportViewer = useCallback((reportType: ReportTypeId) => dispatch({ type: 'OPEN_REPORT_VIEWER', payload: reportType }), []);
-  const backToReportingEngine = useCallback(() => dispatch({ type: 'BACK_TO_REPORTING_ENGINE' }), []);
+  const selectReportToView = useCallback((reportType: ReportTypeId) => dispatch({ type: 'SELECT_REPORT_TO_VIEW', payload: reportType }), []);
 
   const effectiveCompany = state.selectedCompany ?? getCompanyFromTicker(state.tickerInput);
   const canGoBack = getPreviousScreen(state.screen) !== null;
@@ -381,9 +403,11 @@ export const App: React.FC = () => {
                 Back
               </button>
             )}
-            <button type="button" className="button-ghost" onClick={resetFlow}>
-              Start new analysis
-            </button>
+            {state.screen !== 'select-company' && (
+              <button type="button" className="button-ghost" onClick={resetFlow}>
+                Start again with new ticker
+              </button>
+            )}
             <div className="app-pill">V0 · Concept Prototype</div>
           </div>
         </header>
@@ -407,7 +431,7 @@ export const App: React.FC = () => {
             <ChooseAnalystScreen
               company={effectiveCompany}
               onRunAnalysis={runAnalysis}
-              onChangeCompany={changeCompany}
+              onStartAgain={resetFlow}
             />
           )}
           {state.screen === 'workspace' && (
@@ -420,8 +444,7 @@ export const App: React.FC = () => {
               onWidgetProductReportReady={setWidgetProductReportReady}
               onWidgetKpiTableReady={setWidgetKpiTableReady}
               onOpenReportingEngine={() => goToScreen('reporting-engine')}
-              onChangeAnalyst={changeAnalyst}
-              onBack={goBack}
+              onStartAgain={resetFlow}
             />
           )}
           {state.screen === 'reporting-engine' && (
@@ -429,23 +452,21 @@ export const App: React.FC = () => {
               company={effectiveCompany}
               generatedReports={state.generatedReports}
               reportingEngineState={state.reportingEngineState}
+              generatingReportType={state.generatingReportType}
               onStartGenerateReport={startGenerateReport}
               onCompleteGenerateReport={completeGenerateReport}
               onOpenReportViewer={openReportViewer}
-              onBackToWorkspace={() => goToScreen('workspace')}
-              onRestart={resetFlow}
-              onChangeAnalyst={changeAnalyst}
+              onStartAgain={resetFlow}
             />
           )}
           {state.screen === 'report-viewer' && (
             <ReportViewerScreen
               company={effectiveCompany}
               kpis={SAMPLE_KPIS}
+              generatedReports={state.generatedReports}
               activeReportType={state.activeReportType}
-              onBackToReportingEngine={backToReportingEngine}
-              onBackToWorkspace={() => goToScreen('workspace')}
-              onRestart={resetFlow}
-              onChangeAnalyst={changeAnalyst}
+              onSelectReport={selectReportToView}
+              onStartAgain={resetFlow}
             />
           )}
         </main>
@@ -521,13 +542,13 @@ const SelectCompanyScreen: React.FC<SelectCompanyProps> = ({
 type ChooseAnalystProps = {
   company: Company;
   onRunAnalysis: () => void;
-  onChangeCompany: () => void;
+  onStartAgain: () => void;
 };
 
 const ChooseAnalystScreen: React.FC<ChooseAnalystProps> = ({
   company,
   onRunAnalysis,
-  onChangeCompany,
+  onStartAgain,
 }) => {
   return (
     <div>
@@ -570,10 +591,7 @@ const ChooseAnalystScreen: React.FC<ChooseAnalystProps> = ({
               <li>KPI Table</li>
             </ul>
           </div>
-          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="button-secondary" onClick={onChangeCompany}>
-              Change company
-            </button>
+          <div style={{ marginTop: 12 }}>
             <button type="button" className="button-primary" onClick={onRunAnalysis}>
               Run analysis
             </button>
@@ -604,6 +622,12 @@ const ChooseAnalystScreen: React.FC<ChooseAnalystProps> = ({
           </div>
         </div>
       </div>
+
+      <p style={{ marginTop: 20, fontSize: 12 }}>
+        <button type="button" className="button-ghost" onClick={onStartAgain}>
+          Start again with new ticker
+        </button>
+      </p>
     </div>
   );
 };
@@ -621,8 +645,7 @@ type WorkspaceProps = {
   onWidgetProductReportReady: () => void;
   onWidgetKpiTableReady: () => void;
   onOpenReportingEngine: () => void;
-  onChangeAnalyst: () => void;
-  onBack: () => void;
+  onStartAgain: () => void;
 };
 
 const WorkspaceScreen: React.FC<WorkspaceProps> = ({
@@ -634,8 +657,7 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
   onWidgetProductReportReady,
   onWidgetKpiTableReady,
   onOpenReportingEngine,
-  onChangeAnalyst,
-  onBack,
+  onStartAgain,
 }) => {
   React.useEffect(() => {
     if (analysisStatus !== 'running') return;
@@ -672,15 +694,6 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
         <div className="workspace-analyst">
           Analysis by <strong>Fundamental Analyst AI</strong>
         </div>
-      </div>
-
-      <div style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button type="button" className="button-secondary" onClick={onBack}>
-          Back to setup
-        </button>
-        <button type="button" className="button-ghost" onClick={onChangeAnalyst}>
-          Change analyst
-        </button>
       </div>
 
       <div className="workspace-layout">
@@ -723,19 +736,21 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
         </div>
       </div>
 
-      <div className="progress-indicator">
-        <span>
-          {completedCount} of 2 widgets complete ·{' '}
-          {!allComplete ? 'Running structured analysis…' : 'Analysis complete'}
-        </span>
-        <div className="progress-bar-outer">
-          <div
-            className="progress-bar-inner"
-            style={{ width: `${(completedCount / 2) * 100}%` }}
-          />
+      <div className="progress-indicator progress-indicator-stacked">
+        <div className="progress-indicator-row">
+          <span className="progress-indicator-label">
+            {completedCount} of 2 widgets complete ·{' '}
+            {!allComplete ? 'Running structured analysis…' : 'Analysis complete'}
+          </span>
+          <div className="progress-bar-outer">
+            <div
+              className="progress-bar-inner"
+              style={{ width: `${(completedCount / 2) * 100}%` }}
+            />
+          </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
+        <div className="progress-indicator-cta">
+          <p className="progress-indicator-microcopy">
             Use the completed analysis to generate structured report outputs in the next step.
           </p>
           <button
@@ -748,6 +763,12 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
           </button>
         </div>
       </div>
+
+      <p style={{ marginTop: 20, fontSize: 12 }}>
+        <button type="button" className="button-ghost" onClick={onStartAgain}>
+          Start again with new ticker
+        </button>
+      </p>
     </div>
   );
 };
@@ -760,38 +781,30 @@ type ReportingEngineScreenProps = {
   company: Company;
   generatedReports: GeneratedReports;
   reportingEngineState: ReportingEngineState;
+  generatingReportType: ReportTypeId | null;
   onStartGenerateReport: (reportType: ReportTypeId) => void;
   onCompleteGenerateReport: (reportType: ReportTypeId) => void;
   onOpenReportViewer: (reportType: ReportTypeId) => void;
-  onBackToWorkspace: () => void;
-  onRestart: () => void;
-  onChangeAnalyst: () => void;
+  onStartAgain: () => void;
 };
 
 const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
   company,
   generatedReports,
   reportingEngineState,
+  generatingReportType,
   onStartGenerateReport,
   onCompleteGenerateReport,
   onOpenReportViewer,
-  onBackToWorkspace,
-  onRestart,
-  onChangeAnalyst,
+  onStartAgain,
 }) => {
-  React.useEffect(() => {
-    if (reportingEngineState !== 'generating') return;
-    const t = setTimeout(() => onCompleteGenerateReport('overview'), 1400);
-    return () => clearTimeout(t);
-  }, [reportingEngineState, onCompleteGenerateReport]);
+  const reportTypeBeingGenerated = generatingReportType ?? 'overview';
 
-  const handleOverviewAction = () => {
-    if (generatedReports.overview) {
-      onOpenReportViewer('overview');
-    } else {
-      onStartGenerateReport('overview');
-    }
-  };
+  React.useEffect(() => {
+    if (reportingEngineState !== 'generating' || !generatingReportType) return;
+    const t = setTimeout(() => onCompleteGenerateReport(generatingReportType), 1400);
+    return () => clearTimeout(t);
+  }, [reportingEngineState, generatingReportType, onCompleteGenerateReport]);
 
   return (
     <div>
@@ -801,7 +814,7 @@ const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
         <div className="app-section-subtitle">
           {reportingEngineState === 'engine'
             ? 'Generate report outputs from your completed analysis. Choose a report type below and click Generate or View.'
-            : 'Generating your report from the structured analysis outputs…'}
+            : `Generating ${getReportTypeLabel(reportTypeBeingGenerated).toLowerCase()} from workspace outputs…`}
         </div>
       </div>
 
@@ -811,66 +824,49 @@ const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
 
       {reportingEngineState === 'engine' && (
         <div className="screen-grid" style={{ marginBottom: 20 }}>
-          <div className="analyst-card">
-            <div className="analyst-title-row">
-              <div className="analyst-title">Overview Report</div>
-              <span className="analyst-chip">V0 Active</span>
-            </div>
-            <div className="analyst-desc">
-              Professional initiation report with company summary, investment thesis, financials, key
-              positives/negatives, and credit/ESG notes.
-            </div>
-            <div style={{ marginTop: 12 }}>
-              {generatedReports.overview ? (
-                <button type="button" className="button-primary" onClick={() => onOpenReportViewer('overview')}>
-                  View
-                </button>
-              ) : (
-                <button type="button" className="button-primary" onClick={handleOverviewAction}>
-                  Generate
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="analyst-card analyst-card-muted">
-            <div className="analyst-title-row">
-              <div className="analyst-title">Valuation Analysis</div>
-            </div>
-            <div className="analyst-desc">
-              DCF, comparable multiples, and sum-of-the-parts analysis.
-            </div>
-            <div style={{ marginTop: 12, textAlign: 'right' }}>
-              <button type="button" className="button-secondary button-disabled" disabled>
-                Coming soon
-              </button>
-            </div>
-          </div>
-          <div className="analyst-card analyst-card-muted">
-            <div className="analyst-title-row">
-              <div className="analyst-title">Industry Comparison</div>
-            </div>
-            <div className="analyst-desc">
-              Peer comparison and relative positioning within the sector.
-            </div>
-            <div style={{ marginTop: 12, textAlign: 'right' }}>
-              <button type="button" className="button-secondary button-disabled" disabled>
-                Coming soon
-              </button>
-            </div>
-          </div>
-          <div className="analyst-card analyst-card-muted">
-            <div className="analyst-title-row">
-              <div className="analyst-title">News Impact</div>
-            </div>
-            <div className="analyst-desc">
-              Recent news and events affecting the investment case.
-            </div>
-            <div style={{ marginTop: 12, textAlign: 'right' }}>
-              <button type="button" className="button-secondary button-disabled" disabled>
-                Coming soon
-              </button>
-            </div>
-          </div>
+          {REPORT_TYPE_CONFIG.map((config) => {
+            const isGenerated = generatedReports[config.id];
+            const isAvailable = config.availableInV0;
+            const isMuted = !isAvailable;
+
+            return (
+              <div
+                key={config.id}
+                className={isMuted ? 'analyst-card analyst-card-muted' : 'analyst-card'}
+              >
+                <div className="analyst-title-row">
+                  <div className="analyst-title">{config.label}</div>
+                  {isAvailable && <span className="analyst-chip">V0 Active</span>}
+                </div>
+                <div className="analyst-desc">{config.description}</div>
+                <div style={{ marginTop: 12, display: 'flex', justifyContent: isMuted ? 'flex-end' : 'flex-start' }}>
+                  {isAvailable ? (
+                    isGenerated ? (
+                      <button
+                        type="button"
+                        className="button-primary"
+                        onClick={() => onOpenReportViewer(config.id)}
+                      >
+                        View
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="button-primary"
+                        onClick={() => onStartGenerateReport(config.id)}
+                      >
+                        Generate
+                      </button>
+                    )
+                  ) : (
+                    <button type="button" className="button-secondary button-disabled" disabled>
+                      Coming soon
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -882,25 +878,19 @@ const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
               <span className="spinner-dot" />
               <span className="spinner-dot" />
             </div>
-            <div style={{ fontSize: 13 }}>Compiling overview report from workspace outputs…</div>
+            <div style={{ fontSize: 13 }}>
+              Compiling {getReportTypeLabel(reportTypeBeingGenerated).toLowerCase()} from workspace outputs…
+            </div>
             <div style={{ fontSize: 11, color: '#7075a0' }}>Processing…</div>
           </div>
         </div>
       )}
 
-      <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="button-ghost" onClick={onRestart}>
-            Start new analysis
-          </button>
-          <button type="button" className="button-ghost" onClick={onChangeAnalyst}>
-            Change analyst
-          </button>
-        </div>
-        <button type="button" className="button-secondary" onClick={onBackToWorkspace}>
-          Back to workspace
+      <p style={{ marginTop: 20, fontSize: 12 }}>
+        <button type="button" className="button-ghost" onClick={onStartAgain}>
+          Start again with new ticker
         </button>
-      </div>
+      </p>
     </div>
   );
 };
@@ -912,31 +902,42 @@ const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
 type ReportViewerScreenProps = {
   company: Company;
   kpis: KpiRow[];
+  generatedReports: GeneratedReports;
   activeReportType: ReportTypeId | null;
-  onBackToReportingEngine: () => void;
-  onBackToWorkspace: () => void;
-  onRestart: () => void;
-  onChangeAnalyst: () => void;
+  onSelectReport: (reportType: ReportTypeId) => void;
+  onStartAgain: () => void;
 };
 
 const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
   company,
   kpis,
+  generatedReports,
   activeReportType,
-  onBackToReportingEngine,
-  onBackToWorkspace,
-  onRestart,
-  onChangeAnalyst,
+  onSelectReport,
+  onStartAgain,
 }) => {
-  const reportTitle = activeReportType === 'overview' ? 'Overview Report' : activeReportType === 'valuation' ? 'Valuation Analysis' : activeReportType === 'industry' ? 'Industry Comparison' : activeReportType === 'news' ? 'News Impact' : 'Report';
+  const generatedList = (['overview', 'valuation', 'industry', 'news'] as const).filter(
+    (id) => generatedReports[id]
+  );
+  const effectiveReportType = activeReportType && generatedReports[activeReportType]
+    ? activeReportType
+    : generatedList[0] ?? null;
+
+  React.useEffect(() => {
+    if (generatedList.length > 0 && !activeReportType) {
+      onSelectReport(generatedList[0]);
+    }
+  }, [generatedList.length, activeReportType, onSelectReport]);
+
+  const reportTitle = effectiveReportType ? getReportTypeLabel(effectiveReportType) : 'Report';
 
   return (
     <div>
       <div className="app-section-header">
         <div className="app-section-eyebrow">Step 5 · Report Viewer</div>
-        <div className="app-section-title">{reportTitle}</div>
+        <div className="app-section-title">Report Viewer</div>
         <div className="app-section-subtitle">
-          Generated from the structured outputs produced by the Fundamental Analyst AI.
+          Open and view generated reports below. Select a report to view its content.
         </div>
       </div>
 
@@ -944,7 +945,35 @@ const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
         <strong>{company.name}</strong> ({company.ticker}) · {company.exchange} · {company.marketCap}
       </div>
 
-      {activeReportType === 'overview' && (
+      {generatedList.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+            Generated reports
+          </div>
+          <div className="tabs" style={{ flexWrap: 'wrap', gap: 6 }}>
+            {generatedList.map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`tab-pill ${effectiveReportType === id ? 'tab-pill-active' : ''}`}
+                onClick={() => onSelectReport(id)}
+              >
+                {getReportTypeLabel(id)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {generatedList.length === 0 && (
+        <div className="report-section">
+          <div className="report-body">
+            No reports generated yet. Go to the Reporting Engine (step 4) to generate report outputs.
+          </div>
+        </div>
+      )}
+
+      {effectiveReportType === 'overview' && (
         <div className="report-layout">
           <div>
             <div className="report-section">
@@ -1019,22 +1048,21 @@ const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
         </div>
       )}
 
-      <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="button-primary" onClick={onBackToReportingEngine}>
-            Back to Reporting Engine
-          </button>
-          <button type="button" className="button-ghost" onClick={onRestart}>
-            Start new analysis
-          </button>
-          <button type="button" className="button-ghost" onClick={onChangeAnalyst}>
-            Change analyst
-          </button>
+      {effectiveReportType && effectiveReportType !== 'overview' && (
+        <div className="report-section">
+          <div className="report-section-title">{reportTitle}</div>
+          <div className="report-body">
+            This report type is not yet available in V0. Placeholder content for {reportTitle} will be
+            implemented in a future release.
+          </div>
         </div>
-        <button type="button" className="button-secondary" onClick={onBackToWorkspace}>
-          Back to workspace
+      )}
+
+      <p style={{ marginTop: 24, fontSize: 12 }}>
+        <button type="button" className="button-ghost" onClick={onStartAgain}>
+          Start again with new ticker
         </button>
-      </div>
+      </p>
     </div>
   );
 };
