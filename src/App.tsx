@@ -431,7 +431,6 @@ export const App: React.FC = () => {
             <ChooseAnalystScreen
               company={effectiveCompany}
               onRunAnalysis={runAnalysis}
-              onStartAgain={resetFlow}
             />
           )}
           {state.screen === 'workspace' && (
@@ -444,7 +443,6 @@ export const App: React.FC = () => {
               onWidgetProductReportReady={setWidgetProductReportReady}
               onWidgetKpiTableReady={setWidgetKpiTableReady}
               onOpenReportingEngine={() => goToScreen('reporting-engine')}
-              onStartAgain={resetFlow}
             />
           )}
           {state.screen === 'reporting-engine' && (
@@ -456,7 +454,6 @@ export const App: React.FC = () => {
               onStartGenerateReport={startGenerateReport}
               onCompleteGenerateReport={completeGenerateReport}
               onOpenReportViewer={openReportViewer}
-              onStartAgain={resetFlow}
             />
           )}
           {state.screen === 'report-viewer' && (
@@ -466,7 +463,6 @@ export const App: React.FC = () => {
               generatedReports={state.generatedReports}
               activeReportType={state.activeReportType}
               onSelectReport={selectReportToView}
-              onStartAgain={resetFlow}
             />
           )}
         </main>
@@ -542,13 +538,11 @@ const SelectCompanyScreen: React.FC<SelectCompanyProps> = ({
 type ChooseAnalystProps = {
   company: Company;
   onRunAnalysis: () => void;
-  onStartAgain: () => void;
 };
 
 const ChooseAnalystScreen: React.FC<ChooseAnalystProps> = ({
   company,
   onRunAnalysis,
-  onStartAgain,
 }) => {
   return (
     <div>
@@ -622,12 +616,6 @@ const ChooseAnalystScreen: React.FC<ChooseAnalystProps> = ({
           </div>
         </div>
       </div>
-
-      <p style={{ marginTop: 20, fontSize: 12 }}>
-        <button type="button" className="button-ghost" onClick={onStartAgain}>
-          Start again with new ticker
-        </button>
-      </p>
     </div>
   );
 };
@@ -645,7 +633,6 @@ type WorkspaceProps = {
   onWidgetProductReportReady: () => void;
   onWidgetKpiTableReady: () => void;
   onOpenReportingEngine: () => void;
-  onStartAgain: () => void;
 };
 
 const WorkspaceScreen: React.FC<WorkspaceProps> = ({
@@ -657,7 +644,6 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
   onWidgetProductReportReady,
   onWidgetKpiTableReady,
   onOpenReportingEngine,
-  onStartAgain,
 }) => {
   React.useEffect(() => {
     if (analysisStatus !== 'running') return;
@@ -763,12 +749,6 @@ const WorkspaceScreen: React.FC<WorkspaceProps> = ({
           </button>
         </div>
       </div>
-
-      <p style={{ marginTop: 20, fontSize: 12 }}>
-        <button type="button" className="button-ghost" onClick={onStartAgain}>
-          Start again with new ticker
-        </button>
-      </p>
     </div>
   );
 };
@@ -785,7 +765,6 @@ type ReportingEngineScreenProps = {
   onStartGenerateReport: (reportType: ReportTypeId) => void;
   onCompleteGenerateReport: (reportType: ReportTypeId) => void;
   onOpenReportViewer: (reportType: ReportTypeId) => void;
-  onStartAgain: () => void;
 };
 
 const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
@@ -796,7 +775,6 @@ const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
   onStartGenerateReport,
   onCompleteGenerateReport,
   onOpenReportViewer,
-  onStartAgain,
 }) => {
   const reportTypeBeingGenerated = generatingReportType ?? 'overview';
 
@@ -885,12 +863,6 @@ const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
           </div>
         </div>
       )}
-
-      <p style={{ marginTop: 20, fontSize: 12 }}>
-        <button type="button" className="button-ghost" onClick={onStartAgain}>
-          Start again with new ticker
-        </button>
-      </p>
     </div>
   );
 };
@@ -905,7 +877,6 @@ type ReportViewerScreenProps = {
   generatedReports: GeneratedReports;
   activeReportType: ReportTypeId | null;
   onSelectReport: (reportType: ReportTypeId) => void;
-  onStartAgain: () => void;
 };
 
 const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
@@ -914,7 +885,6 @@ const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
   generatedReports,
   activeReportType,
   onSelectReport,
-  onStartAgain,
 }) => {
   const generatedList = (['overview', 'valuation', 'industry', 'news'] as const).filter(
     (id) => generatedReports[id]
@@ -1057,12 +1027,6 @@ const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
           </div>
         </div>
       )}
-
-      <p style={{ marginTop: 24, fontSize: 12 }}>
-        <button type="button" className="button-ghost" onClick={onStartAgain}>
-          Start again with new ticker
-        </button>
-      </p>
     </div>
   );
 };
