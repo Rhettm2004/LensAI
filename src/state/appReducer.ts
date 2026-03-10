@@ -22,6 +22,7 @@ export type AppAction =
   | { type: 'SELECT_ANALYST'; payload: AnalystId }
   | { type: 'RUN_ANALYSIS' }
   | { type: 'SET_ANALYSIS_DATA'; payload: CompanyAnalysisResponse }
+  | { type: 'SET_ANALYSIS_LOAD_ERROR'; payload: string }
   | { type: 'SET_ANALYSIS_STATUS'; payload: AnalysisStatus }
   | { type: 'RESET_FLOW' }
   | { type: 'CHANGE_COMPANY' }
@@ -34,7 +35,7 @@ export type AppAction =
         | { reportType: 'overview'; result: OverviewReportResult }
         | { reportType: Exclude<ReportTypeId, 'overview'> };
     }
-  | { type: 'GENERATE_REPORT_FAILED'; payload: ReportTypeId }
+  | { type: 'GENERATE_REPORT_FAILED'; payload: { reportType: ReportTypeId; message: string } }
   | { type: 'OPEN_REPORT_VIEWER'; payload: ReportTypeId }
   | { type: 'SELECT_REPORT_TO_VIEW'; payload: ReportTypeId }
   | { type: 'BACK_TO_REPORTING_ENGINE' };
@@ -72,8 +73,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         screen: 'workspace',
         maxStepReached: Math.max(state.maxStepReached, 2),
+        selectedAnalystId: 'fundamental',
         analysisStatus: 'running',
         analysisData: null,
+        analysisLoadError: null,
         overviewReport: null,
         generatedReports: INITIAL_GENERATED_REPORTS,
         reportingEngineState: 'engine',
@@ -82,7 +85,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
 
     case 'SET_ANALYSIS_DATA':
-      return { ...state, analysisData: action.payload };
+      return { ...state, analysisData: action.payload, analysisLoadError: null };
+
+    case 'SET_ANALYSIS_LOAD_ERROR':
+      return { ...state, analysisLoadError: action.payload, analysisStatus: 'idle' };
 
     case 'SET_ANALYSIS_STATUS':
       return { ...state, analysisStatus: action.payload };
@@ -110,10 +116,20 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
 
     case 'START_GENERATE_REPORT':
-      return { ...state, reportingEngineState: 'generating', generatingReportType: action.payload };
+      return {
+        ...state,
+        reportingEngineState: 'generating',
+        generatingReportType: action.payload,
+        reportGenerationError: null,
+      };
 
     case 'COMPLETE_GENERATE_REPORT': {
-      const nextBase = { ...state, reportingEngineState: 'engine' as const, generatingReportType: null };
+      const nextBase = {
+        ...state,
+        reportingEngineState: 'engine' as const,
+        generatingReportType: null,
+        reportGenerationError: null,
+      };
       if (action.payload.reportType === 'overview') {
         return {
           ...nextBase,
@@ -136,6 +152,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         reportingEngineState: 'engine',
         generatingReportType: null,
+        reportGenerationError: action.payload.message,
       };
 
     case 'OPEN_REPORT_VIEWER':
@@ -166,6 +183,8 @@ export function getInitialAppState(): AppState {
     selectedAnalystId: null,
     analysisStatus: 'idle',
     analysisData: null,
+    analysisLoadError: null,
+    reportGenerationError: null,
     overviewReport: null,
     generatedReports: INITIAL_GENERATED_REPORTS,
     reportingEngineState: 'engine',

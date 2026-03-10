@@ -6,6 +6,11 @@ import {
   getCompanyForDisplay,
   generateOverviewReport,
 } from './services';
+import {
+  WORKSPACE_WIDGET_1_MS,
+  WORKSPACE_WIDGET_2_MS,
+  WORKSPACE_COMPLETE_MS,
+} from './constants';
 import { WorkflowStepper } from './components/layout';
 import {
   SelectCompanyScreen,
@@ -26,10 +31,9 @@ export const App: React.FC = () => {
   const runAnalysis = useCallback(() => dispatch({ type: 'RUN_ANALYSIS' }), []);
   const setAnalysisStatus = useCallback((status: AppAnalysisStatus) => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: status }), []);
   const startGenerateReport = useCallback((reportType: ReportTypeId) => dispatch({ type: 'START_GENERATE_REPORT', payload: reportType }), []);
-  const generateReportFailed = useCallback(
-    (reportType: ReportTypeId) => dispatch({ type: 'GENERATE_REPORT_FAILED', payload: reportType }),
-    []
-  );
+  const generateReportFailed = useCallback((reportType: ReportTypeId, message: string) => {
+    dispatch({ type: 'GENERATE_REPORT_FAILED', payload: { reportType, message } });
+  }, []);
   const openReportViewer = useCallback((reportType: ReportTypeId) => dispatch({ type: 'OPEN_REPORT_VIEWER', payload: reportType }), []);
   const selectReportToView = useCallback((reportType: ReportTypeId) => dispatch({ type: 'SELECT_REPORT_TO_VIEW', payload: reportType }), []);
 
@@ -49,23 +53,34 @@ export const App: React.FC = () => {
     const ticker = state.selectedCompany.ticker;
     getCompanyAnalysis(ticker)
       .then((data) => dispatch({ type: 'SET_ANALYSIS_DATA', payload: data }))
-      .catch(() => { /* TODO: surface error in UI */ });
+      .catch(() => {
+        dispatch({
+          type: 'SET_ANALYSIS_LOAD_ERROR',
+          payload: 'Could not load analysis for this company. Check your connection and try again.',
+        });
+      });
   }, [state.screen, state.selectedCompany?.ticker, state.analysisData, needsAnalysisData, hasStaleOrNoAnalysis]);
 
   // Advance workspace widget status only after analysis data has loaded (ensures KPI table has data).
   // Deps intentionally exclude analysisStatus so we don't re-run when status advances (which would cleanup and cancel t2/t3).
-  const WIDGET_1_DELAY_MS = 1200;
-  const WIDGET_2_DELAY_MS = 2400;
-  const COMPLETE_DELAY_MS = 3000;
   useEffect(() => {
     if (
       state.screen !== 'workspace' ||
       state.analysisStatus !== 'running' ||
       !state.analysisData
     ) return;
-    const t1 = setTimeout(() => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'widget_1_complete' }), WIDGET_1_DELAY_MS);
-    const t2 = setTimeout(() => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'widget_2_complete' }), WIDGET_2_DELAY_MS);
-    const t3 = setTimeout(() => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'complete' }), COMPLETE_DELAY_MS);
+    const t1 = setTimeout(
+      () => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'widget_1_complete' }),
+      WORKSPACE_WIDGET_1_MS
+    );
+    const t2 = setTimeout(
+      () => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'widget_2_complete' }),
+      WORKSPACE_WIDGET_2_MS
+    );
+    const t3 = setTimeout(
+      () => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'complete' }),
+      WORKSPACE_COMPLETE_MS
+    );
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -92,7 +107,12 @@ export const App: React.FC = () => {
         }
       })
       .catch(() => {
-        if (!cancelled) generateReportFailed('overview');
+        if (!cancelled) {
+          generateReportFailed(
+            'overview',
+            'Report generation failed. Please try again or go back to the workspace.'
+          );
+        }
       });
     return () => {
       cancelled = true;
@@ -156,7 +176,9 @@ export const App: React.FC = () => {
               company={effectiveCompany}
               analysis={analysis}
               analysisStatus={state.analysisStatus}
+              analysisLoadError={state.analysisLoadError}
               onAnalysisStatusChange={setAnalysisStatus}
+              onRetryAnalysis={runAnalysis}
               onOpenReportingEngine={() => goToScreen('reporting-engine')}
             />
           )}
@@ -166,6 +188,7 @@ export const App: React.FC = () => {
               generatedReports={state.generatedReports}
               reportingEngineState={state.reportingEngineState}
               generatingReportType={state.generatingReportType}
+              reportGenerationError={state.reportGenerationError}
               onStartGenerateReport={startGenerateReport}
               onOpenReportViewer={openReportViewer}
             />

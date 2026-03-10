@@ -291,7 +291,11 @@ const MOCK_ANALYSIS: Record<string, Omit<CompanyAnalysisResponse['analysis'], 'a
 // Default company (single source of truth for fallback / unknown ticker)
 // ---------------------------------------------------------------------------
 
-/** Default ticker when none selected or when requested ticker is not in mock data. */
+/**
+ * Fallback ticker when requested ticker has no mock company/analysis entry.
+ * Used only inside mock helpers so missing keys still return a stable shape for services.
+ * Prefer explicit selection in UI—do not rely on this as a product default.
+ */
 export const DEFAULT_TICKER = 'MU';
 
 /** Get mock company by ticker; returns default if not found. */

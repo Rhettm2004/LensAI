@@ -42,6 +42,10 @@ export type AppState = {
   analysisStatus: AnalysisStatus;
   /** Loaded from data service when user runs analysis; drives workspace and report content. */
   analysisData: CompanyAnalysisResponse | null;
+  /** Set when getCompanyAnalysis fails; cleared on retry or successful load. */
+  analysisLoadError: string | null;
+  /** Set when report generation fails; cleared on next Generate. */
+  reportGenerationError: string | null;
   /**
    * Generated overview report from report service; set only after generateOverviewReport resolves.
    * Null after RUN_ANALYSIS / flow reset so regeneration always starts clean.

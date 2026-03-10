@@ -1,18 +1,23 @@
 import React from 'react';
 import type { Company, AnalysisOutput } from '../types';
 import type { AppAnalysisStatus } from '../types';
+import {
+  WORKSPACE_WIDGET_1_MS,
+  WORKSPACE_WIDGET_2_MS,
+} from '../constants';
+import { ErrorCallout } from '../components/feedback';
 import { WidgetLoading, KpiTable, ProductReportBody } from '../components/widgets';
 import { ProgressIndicator } from '../components/progress';
 import { getProgressMessage, getWidget1LoadingLabel } from '../utils/workspaceMessages';
-
-const WIDGET_1_DELAY_MS = 1200;
-const WIDGET_2_DELAY_MS = 2400;
 
 export type WorkspaceScreenProps = {
   company: Company;
   analysis: AnalysisOutput | null;
   analysisStatus: AppAnalysisStatus;
+  analysisLoadError: string | null;
   onAnalysisStatusChange: (status: AppAnalysisStatus) => void;
+  /** Re-runs analysis load (dispatches RUN_ANALYSIS from App). */
+  onRetryAnalysis: () => void;
   onOpenReportingEngine: () => void;
 };
 
@@ -20,6 +25,8 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
   company,
   analysis,
   analysisStatus,
+  analysisLoadError,
+  onRetryAnalysis,
   onOpenReportingEngine,
 }) => {
   const widget1Visible =
@@ -30,6 +37,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
   const completedCount =
     analysisStatus === 'running' ? 0 : analysisStatus === 'widget_1_complete' ? 1 : 2;
   const allComplete = analysisStatus === 'complete';
+  const showError = !!analysisLoadError;
 
   return (
     <div>
@@ -55,6 +63,16 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
         </div>
       </div>
 
+      {showError && (
+        <ErrorCallout
+          message={analysisLoadError!}
+          actionLabel="Retry"
+          onAction={onRetryAnalysis}
+        />
+      )}
+
+      {!showError && (
+        <>
       <div className="workspace-layout">
         <div className="widget-card">
           <div className="widget-header">
@@ -70,7 +88,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
             {!widget1Visible ? (
               <WidgetLoading
                 label={getWidget1LoadingLabel(analysisStatus)}
-                estimatedSeconds={WIDGET_1_DELAY_MS / 1000}
+                estimatedSeconds={WORKSPACE_WIDGET_1_MS / 1000}
               />
             ) : (
               <ProductReportBody analysis={analysis!} />
@@ -98,8 +116,8 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                 }
                 estimatedSeconds={
                   analysisStatus === 'widget_1_complete'
-                    ? (WIDGET_2_DELAY_MS - WIDGET_1_DELAY_MS) / 1000
-                    : WIDGET_2_DELAY_MS / 1000
+                    ? (WORKSPACE_WIDGET_2_MS - WORKSPACE_WIDGET_1_MS) / 1000
+                    : WORKSPACE_WIDGET_2_MS / 1000
                 }
               />
             ) : (
@@ -118,6 +136,8 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
         onCtaClick={onOpenReportingEngine}
         ctaDisabled={!allComplete}
       />
+        </>
+      )}
     </div>
   );
 };

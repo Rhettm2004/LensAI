@@ -7,7 +7,7 @@
  */
 
 import type { Company } from '../types';
-import { getMockCompany, MOCK_TICKERS, DEFAULT_TICKER } from '../mock/data';
+import { getMockCompany, MOCK_TICKERS } from '../mock/data';
 
 /** Simulated network delay (ms). */
 const MOCK_DELAY_MS = 100;
@@ -71,6 +71,16 @@ export function getAvailableTickers(): string[] {
  * Resolve a company for display when no selection exists (e.g. fallback on choose-analyst).
  * Returns mock company for ticker or default. Prefer getCompanyByTicker for "lookup" semantics.
  */
+/**
+ * Resolve a company for display when no selection exists (defensive fallback).
+ * Avoids silently defaulting to a single demo ticker when input is empty—uses first
+ * known mock ticker instead. Unknown non-empty tickers still flow through getMockCompany
+ * (mock layer may fall back for analysis shape only).
+ */
 export function getCompanyForDisplay(ticker: string): Company {
-  return getMockCompany(ticker || DEFAULT_TICKER);
+  const normalized = (ticker || '').trim().toUpperCase();
+  if (normalized.length === 0) {
+    return getMockCompany(MOCK_TICKERS[0]);
+  }
+  return getMockCompany(normalized);
 }

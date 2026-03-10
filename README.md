@@ -95,8 +95,8 @@ src/
 - **Selected analyst unused** — `selectedAnalystId` exists in state but no UI sets it (only one analyst).
 - **Non-overview reports** — Valuation/industry/news show “not yet available” placeholder.
 - **Default ticker MU** — Fallback for unknown ticker is Micron (in mock).
-- **No error UI** — Failed `getCompanyAnalysis` is caught with a no-op.
-- **Duplicate timing constants** — Widget delays in both App and WorkspaceScreen; report delay in both reportService and ReportingEngineScreen.
+- **Error UI** — `ErrorCallout` surfaces analysis load failure (workspace, Retry) and report generation failure (reporting engine, Try again). Messages are fixed strings until backend returns codes.
+- **Timing constants** — Single source in `src/constants/timing.ts` for workspace staged delays and report mock delay (`reportService` imports same value).
 
 ---
 

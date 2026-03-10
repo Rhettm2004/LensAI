@@ -5,6 +5,7 @@
  * Future: POST /reports/generate → jobId, then GET /reports/:reportId
  */
 
+import { REPORT_GENERATION_MOCK_MS } from '../constants/timing';
 import type { AnalysisOutput, OverviewReportResult, ReportSection } from '../types';
 
 export interface GenerateOverviewReportInput {
@@ -14,9 +15,6 @@ export interface GenerateOverviewReportInput {
   analysis: AnalysisOutput;
 }
 
-/** Simulated generation delay (ms). */
-const MOCK_DELAY_MS = 1400;
-
 /**
  * Generate overview report from analysis output.
  * In production this would call the backend to compile/generate the report.
@@ -24,7 +22,7 @@ const MOCK_DELAY_MS = 1400;
 export async function generateOverviewReport(
   input: GenerateOverviewReportInput
 ): Promise<OverviewReportResult> {
-  await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
+  await new Promise((resolve) => setTimeout(resolve, REPORT_GENERATION_MOCK_MS));
   const sections: ReportSection[] = input.analysis.reportSections ?? [];
   const kpiRows = input.analysis.kpiRows ?? [];
   return { reportType: 'overview', sections, kpiRows };

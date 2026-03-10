@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Company } from '../types';
 import type { GeneratedReports, ReportTypeId, ReportingEngineState } from '../types';
+import { ErrorCallout } from '../components/feedback';
 import { getReportTypeLabel, REPORT_TYPE_CONFIG } from '../state';
 
 export type ReportingEngineScreenProps = {
@@ -8,6 +9,7 @@ export type ReportingEngineScreenProps = {
   generatedReports: GeneratedReports;
   reportingEngineState: ReportingEngineState;
   generatingReportType: ReportTypeId | null;
+  reportGenerationError: string | null;
   onStartGenerateReport: (reportType: ReportTypeId) => void;
   onOpenReportViewer: (reportType: ReportTypeId) => void;
 };
@@ -17,6 +19,7 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
   generatedReports,
   reportingEngineState,
   generatingReportType,
+  reportGenerationError,
   onStartGenerateReport,
   onOpenReportViewer,
 }) => {
@@ -37,6 +40,14 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
       <div style={{ marginBottom: 16, fontSize: 12, color: '#a3a7c2' }}>
         <strong>{company.name}</strong> ({company.ticker}) · {company.exchange} · {company.marketCap}
       </div>
+
+      {reportingEngineState === 'engine' && reportGenerationError && (
+        <ErrorCallout
+          message={reportGenerationError}
+          actionLabel="Try again"
+          onAction={() => onStartGenerateReport('overview')}
+        />
+      )}
 
       {reportingEngineState === 'engine' && (
         <div className="screen-grid" style={{ marginBottom: 20 }}>
