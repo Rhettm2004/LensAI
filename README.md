@@ -15,6 +15,14 @@ npm run dev
 
 Build: `npm run build`. Preview: `npm run preview`.
 
+### Backend (optional, mock API)
+
+```bash
+cd backend && npm install && npm run dev
+```
+
+Serves **http://localhost:3001** — `GET /companies?query=`, `GET /companies/:ticker`, `POST /analysis/run`, `POST /report/generate`. See `backend/README.md`. Frontend still uses local services; set `VITE_API_BASE_URL` and use `src/services/apiBase.ts` when wiring HTTP.
+
 ---
 
 ## What’s built
