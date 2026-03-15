@@ -9,8 +9,8 @@ export async function generateReportHandler(req: Request, res: Response): Promis
     res.status(400).json({ error: 'Missing ticker' });
     return;
   }
-  if (!analysis || !analysis.reportSections) {
-    res.status(400).json({ error: 'Missing analysis payload (need analysis.reportSections)' });
+  if (!analysis || !analysis.kpiRows) {
+    res.status(400).json({ error: 'Missing analysis payload (need analysis with kpiRows)' });
     return;
   }
   const result = await generateOverviewReport({ ticker: ticker.trim(), analysis });

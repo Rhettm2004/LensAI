@@ -29,11 +29,17 @@ export interface ReportSection {
   content: string;
 }
 
+/** Aligned with frontend Workspace analysis; reportSections deprecated/empty. */
 export interface AnalysisOutput {
   companySummary: string;
+  investmentThesis?: string;
   businessModelOverview: string;
   revenueDrivers: string;
   industryPositioning: string;
+  keyPositives?: string;
+  keyNegatives?: string;
+  creditAndEsg?: string;
+  kpiSnapshotCaption?: string;
   kpiRows: KpiRow[];
   reportSections: ReportSection[];
   analysisStatus: 'idle' | 'running' | 'complete';

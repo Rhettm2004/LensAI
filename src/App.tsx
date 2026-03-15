@@ -100,10 +100,10 @@ export const App: React.FC = () => {
     }
     let cancelled = false;
     const ticker = state.selectedCompany.ticker;
-    generateOverviewReport({ ticker, analysis })
-      .then((result) => {
+    generateOverviewReport({ ticker, company: state.selectedCompany, analysis })
+      .then((artifact) => {
         if (!cancelled) {
-          dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: { reportType: 'overview', result } });
+          dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: { reportType: 'overview', artifact } });
         }
       })
       .catch(() => {
@@ -155,7 +155,7 @@ export const App: React.FC = () => {
           <WorkflowStepper
             currentScreen={state.screen}
             maxStepReached={state.maxStepReached}
-            hasAnyReportGenerated={hasAnyReportGenerated(state.generatedReports)}
+            hasAnyReportGenerated={hasAnyReportGenerated(state.generatedReportByType)}
             onStepClick={goToScreen}
           />
           {state.screen === 'select-company' && (
@@ -185,7 +185,7 @@ export const App: React.FC = () => {
           {state.screen === 'reporting-engine' && (
             <ReportingEngineScreen
               company={effectiveCompany}
-              generatedReports={state.generatedReports}
+              generatedReportByType={state.generatedReportByType}
               reportingEngineState={state.reportingEngineState}
               generatingReportType={state.generatingReportType}
               reportGenerationError={state.reportGenerationError}
@@ -196,8 +196,7 @@ export const App: React.FC = () => {
           {state.screen === 'report-viewer' && (
             <ReportViewerScreen
               company={effectiveCompany}
-              overviewReport={state.overviewReport}
-              generatedReports={state.generatedReports}
+              generatedReportByType={state.generatedReportByType}
               activeReportType={state.activeReportType}
               onSelectReport={selectReportToView}
             />

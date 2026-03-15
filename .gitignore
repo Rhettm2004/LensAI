@@ -1,0 +1,17 @@
+# Dependencies — never commit (npm install restores)
+node_modules/
+
+# Build output — run npm run build when needed
+dist/
+
+# Vite cache
+.vite/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+*.log

@@ -121,7 +121,14 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                 }
               />
             ) : (
-              <KpiTable rows={analysis?.kpiRows ?? []} />
+              <div>
+                {analysis?.kpiSnapshotCaption && (
+                  <div style={{ fontSize: 12, color: '#a3a7c2', marginBottom: 10, lineHeight: 1.45 }}>
+                    {analysis.kpiSnapshotCaption}
+                  </div>
+                )}
+                <KpiTable rows={analysis?.kpiRows ?? []} />
+              </div>
             )}
           </div>
         </div>

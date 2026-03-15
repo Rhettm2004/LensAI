@@ -3,7 +3,8 @@
  * Kept separate from domain types (Company, AnalysisOutput, etc.).
  */
 
-import type { Company, CompanyAnalysisResponse, OverviewReportResult } from './index';
+import type { Company, CompanyAnalysisResponse } from './index';
+import type { GeneratedReportArtifact } from './reportDocument';
 
 export type ScreenId =
   | 'select-company'
@@ -24,11 +25,15 @@ export type AnalysisStatus =
 
 export type ReportTypeId = 'overview' | 'valuation' | 'industry' | 'news';
 
-export type GeneratedReports = {
-  overview: boolean;
-  valuation: boolean;
-  industry: boolean;
-  news: boolean;
+/**
+ * One stored document per report type; null = not generated yet.
+ * Viewer + PDF both read from here only.
+ */
+export type GeneratedReportByType = {
+  overview: GeneratedReportArtifact | null;
+  valuation: GeneratedReportArtifact | null;
+  industry: GeneratedReportArtifact | null;
+  news: GeneratedReportArtifact | null;
 };
 
 export type ReportingEngineState = 'engine' | 'generating';
@@ -46,12 +51,8 @@ export type AppState = {
   analysisLoadError: string | null;
   /** Set when report generation fails; cleared on next Generate. */
   reportGenerationError: string | null;
-  /**
-   * Generated overview report from report service; set only after generateOverviewReport resolves.
-   * Null after RUN_ANALYSIS / flow reset so regeneration always starts clean.
-   */
-  overviewReport: OverviewReportResult | null;
-  generatedReports: GeneratedReports;
+  /** Generated report payloads keyed by type; single source for viewer + PDF. */
+  generatedReportByType: GeneratedReportByType;
   reportingEngineState: ReportingEngineState;
   generatingReportType: ReportTypeId | null;
   activeReportType: ReportTypeId | null;

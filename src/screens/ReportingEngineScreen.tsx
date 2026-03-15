@@ -1,12 +1,12 @@
 import React from 'react';
 import type { Company } from '../types';
-import type { GeneratedReports, ReportTypeId, ReportingEngineState } from '../types';
+import type { GeneratedReportByType, ReportTypeId, ReportingEngineState } from '../types';
 import { ErrorCallout } from '../components/feedback';
 import { getReportTypeLabel, REPORT_TYPE_CONFIG } from '../state';
 
 export type ReportingEngineScreenProps = {
   company: Company;
-  generatedReports: GeneratedReports;
+  generatedReportByType: GeneratedReportByType;
   reportingEngineState: ReportingEngineState;
   generatingReportType: ReportTypeId | null;
   reportGenerationError: string | null;
@@ -16,7 +16,7 @@ export type ReportingEngineScreenProps = {
 
 export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
   company,
-  generatedReports,
+  generatedReportByType,
   reportingEngineState,
   generatingReportType,
   reportGenerationError,
@@ -52,7 +52,7 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
       {reportingEngineState === 'engine' && (
         <div className="screen-grid" style={{ marginBottom: 20 }}>
           {REPORT_TYPE_CONFIG.map((config) => {
-            const isGenerated = generatedReports[config.id];
+            const isGenerated = generatedReportByType[config.id] != null;
             const isAvailable = config.availableInV0;
             const isMuted = !isAvailable;
 

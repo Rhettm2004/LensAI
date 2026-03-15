@@ -2,7 +2,7 @@
  * Workflow and report constants used by app state and UI.
  */
 
-import type { GeneratedReports, ReportTypeId, ScreenId } from '../types';
+import type { GeneratedReportArtifact, GeneratedReportByType, ReportTypeId, ScreenId } from '../types';
 
 export const SCREEN_ORDER: ScreenId[] = [
   'select-company',
@@ -20,11 +20,11 @@ export const WORKFLOW_STEPS: { id: ScreenId; label: string }[] = [
   { id: 'report-viewer', label: 'Report Viewer' },
 ];
 
-export const INITIAL_GENERATED_REPORTS: GeneratedReports = {
-  overview: false,
-  valuation: false,
-  industry: false,
-  news: false,
+export const INITIAL_GENERATED_REPORT_BY_TYPE: GeneratedReportByType = {
+  overview: null,
+  valuation: null,
+  industry: null,
+  news: null,
 };
 
 export const REPORT_TYPE_CONFIG: {
@@ -39,8 +39,10 @@ export const REPORT_TYPE_CONFIG: {
   { id: 'news', label: 'News Impact', description: 'Recent news and events affecting the investment case.', availableInV0: false },
 ];
 
-export function hasAnyReportGenerated(g: GeneratedReports): boolean {
-  return g.overview || g.valuation || g.industry || g.news;
+export function hasAnyReportGenerated(docs: GeneratedReportByType): boolean {
+  const has = (a: GeneratedReportArtifact | null) =>
+    a != null && a.pdfBytes != null && a.pdfBytes.length > 0;
+  return has(docs.overview) || has(docs.valuation) || has(docs.industry) || has(docs.news);
 }
 
 export function getReportTypeLabel(id: ReportTypeId): string {
