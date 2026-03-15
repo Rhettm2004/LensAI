@@ -2,22 +2,24 @@ import React, { useState } from 'react';
 import { getContentSummary } from '../../utils/contentSummary';
 
 export type DataBlockWidgetProps = {
-  /** Full content; collapsed state shows a summary (later AI-generated). */
+  /** Full content; collapsed state shows summary (or summaryContent when provided). */
   content: string;
+  /** Optional summary for collapsed view; when absent, derived from content. */
+  summaryContent?: string;
 };
 
 /**
- * Single data block: collapsed = summary of important info, expanded = full data.
- * Summary is derived from content now; will be AI-generated later.
+ * Single data block: collapsed = summary, expanded = full data.
+ * When summaryContent is absent, falls back to getContentSummary(content).
  */
-export const DataBlockWidget: React.FC<DataBlockWidgetProps> = ({ content }) => {
+export const DataBlockWidget: React.FC<DataBlockWidgetProps> = ({ content, summaryContent }) => {
   const [expanded, setExpanded] = useState(false);
 
   if (!content.trim()) {
     return <div style={{ fontSize: 13, color: '#a3a7c2' }}>No data available.</div>;
   }
 
-  const summary = getContentSummary(content);
+  const summary = summaryContent?.trim() ?? getContentSummary(content);
   const hasMore = content.trim().length > summary.length || summary.endsWith('…');
 
   if (!expanded) {

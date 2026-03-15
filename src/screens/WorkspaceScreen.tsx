@@ -1,11 +1,16 @@
 import React from 'react';
 import type { Company, AnalysisOutput } from '../types';
 import type { AppAnalysisStatus } from '../types';
+import type { WorkspaceDocument } from '../types/workspace';
 import {
   WORKSPACE_WIDGET_1_MS,
   WORKSPACE_WIDGET_2_MS,
 } from '../constants';
-import { WORKSPACE_DATA_WIDGETS, getWorkspaceDataWidgetContent } from '../constants/workspaceWidgets';
+import {
+  analysisOutputToWorkspaceDocument,
+  getBlockDisplayConfig,
+  WORKSPACE_BLOCK_IDS_IN_ORDER,
+} from '../utils/workspaceDocument';
 import { ErrorCallout } from '../components/feedback';
 import { WidgetLoading, KpiTable, DataBlockWidget } from '../components/widgets';
 import { ProgressIndicator } from '../components/progress';
@@ -30,6 +35,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
   onRetryAnalysis,
   onOpenReportingEngine,
 }) => {
+  const workspace: WorkspaceDocument | null = analysis ? analysisOutputToWorkspaceDocument(analysis) : null;
   const widget1Visible =
     (analysisStatus === 'widget_1_complete' || analysisStatus === 'widget_2_complete' || analysisStatus === 'complete') &&
     !!analysis;
@@ -75,71 +81,120 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
       {!showError && (
         <>
       <div className="workspace-layout">
-        {WORKSPACE_DATA_WIDGETS.map((config) => {
-          const content = widget1Visible && analysis ? getWorkspaceDataWidgetContent(analysis, config.key) : '';
-          const isEmpty = !content;
-          const showLoading = !widget1Visible;
-          return (
-            <div key={config.id} className="widget-card">
-              <div className="widget-header">
-                <div className="widget-title-group">
-                  <div className="widget-title">{config.title}</div>
-                  <div className="widget-subtitle">{config.subtitle}</div>
-                </div>
-                <span className="widget-pill">{config.pill}</span>
-              </div>
-              <div className="widget-body">
-                {showLoading ? (
-                  <WidgetLoading
-                    label={getWidget1LoadingLabel(analysisStatus)}
-                    estimatedSeconds={WORKSPACE_WIDGET_1_MS / 1000}
-                  />
-                ) : isEmpty ? (
-                  <div style={{ fontSize: 13, color: '#a3a7c2' }}>No data available.</div>
-                ) : (
-                  <DataBlockWidget content={content} />
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {workspace
+          ? workspace.blocks.map((block) => {
+              const config = getBlockDisplayConfig(block.id);
+              const title = config?.title ?? block.title;
+              const subtitle = config?.subtitle ?? '';
+              const pill = config?.pill ?? '';
 
-        <div className="widget-card">
-          <div className="widget-header">
-            <div className="widget-title-group">
-              <div className="widget-title">KPI Table</div>
-              <div className="widget-subtitle">
-                Reconstructed performance trends across key financial metrics.
-              </div>
-            </div>
-            <span className="widget-pill">KPI Trends</span>
-          </div>
-          <div className="widget-body">
-            {!widget2Visible ? (
-              <WidgetLoading
-                label={
-                  analysisStatus === 'widget_1_complete'
-                    ? 'Loading KPI Table…'
-                    : 'Aligning financial series and KPI trends…'
-                }
-                estimatedSeconds={
-                  analysisStatus === 'widget_1_complete'
-                    ? (WORKSPACE_WIDGET_2_MS - WORKSPACE_WIDGET_1_MS) / 1000
-                    : WORKSPACE_WIDGET_2_MS / 1000
-                }
-              />
-            ) : (
-              <div>
-                {analysis?.kpiSnapshotCaption && (
-                  <div style={{ fontSize: 12, color: '#a3a7c2', marginBottom: 10, lineHeight: 1.45 }}>
-                    {analysis.kpiSnapshotCaption}
+              if (block.blockType === 'narrative') {
+                const showLoading = !widget1Visible;
+                const isEmpty = !block.fullContent.trim();
+                return (
+                  <div key={block.id} className="widget-card">
+                    <div className="widget-header">
+                      <div className="widget-title-group">
+                        <div className="widget-title">{title}</div>
+                        <div className="widget-subtitle">{subtitle}</div>
+                      </div>
+                      <span className="widget-pill">{pill}</span>
+                    </div>
+                    <div className="widget-body">
+                      {showLoading ? (
+                        <WidgetLoading
+                          label={getWidget1LoadingLabel(analysisStatus)}
+                          estimatedSeconds={WORKSPACE_WIDGET_1_MS / 1000}
+                        />
+                      ) : isEmpty ? (
+                        <div style={{ fontSize: 13, color: '#a3a7c2' }}>No data available.</div>
+                      ) : (
+                        <DataBlockWidget
+                          content={block.fullContent}
+                          summaryContent={block.summaryContent}
+                        />
+                      )}
+                    </div>
                   </div>
-                )}
-                <KpiTable rows={analysis?.kpiRows ?? []} />
-              </div>
-            )}
-          </div>
-        </div>
+                );
+              }
+
+              // kpiTable block
+              const showKpiLoading = !widget2Visible;
+              return (
+                <div key={block.id} className="widget-card">
+                  <div className="widget-header">
+                    <div className="widget-title-group">
+                      <div className="widget-title">{title}</div>
+                      <div className="widget-subtitle">{subtitle}</div>
+                    </div>
+                    <span className="widget-pill">{pill}</span>
+                  </div>
+                  <div className="widget-body">
+                    {showKpiLoading ? (
+                      <WidgetLoading
+                        label={
+                          analysisStatus === 'widget_1_complete'
+                            ? 'Loading KPI Table…'
+                            : 'Aligning financial series and KPI trends…'
+                        }
+                        estimatedSeconds={
+                          analysisStatus === 'widget_1_complete'
+                            ? (WORKSPACE_WIDGET_2_MS - WORKSPACE_WIDGET_1_MS) / 1000
+                            : WORKSPACE_WIDGET_2_MS / 1000
+                        }
+                      />
+                    ) : (
+                      <div>
+                        {block.caption && (
+                          <div style={{ fontSize: 12, color: '#a3a7c2', marginBottom: 10, lineHeight: 1.45 }}>
+                            {block.caption}
+                          </div>
+                        )}
+                        <KpiTable rows={block.rows} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          : WORKSPACE_BLOCK_IDS_IN_ORDER.map((blockId) => {
+              const config = getBlockDisplayConfig(blockId);
+              if (!config) return null;
+              const isKpi = blockId === 'kpiTable';
+              return (
+                <div key={blockId} className="widget-card">
+                  <div className="widget-header">
+                    <div className="widget-title-group">
+                      <div className="widget-title">{config.title}</div>
+                      <div className="widget-subtitle">{config.subtitle}</div>
+                    </div>
+                    <span className="widget-pill">{config.pill}</span>
+                  </div>
+                  <div className="widget-body">
+                    {isKpi ? (
+                      <WidgetLoading
+                        label={
+                          analysisStatus === 'widget_1_complete'
+                            ? 'Loading KPI Table…'
+                            : 'Aligning financial series and KPI trends…'
+                        }
+                        estimatedSeconds={
+                          analysisStatus === 'widget_1_complete'
+                            ? (WORKSPACE_WIDGET_2_MS - WORKSPACE_WIDGET_1_MS) / 1000
+                            : WORKSPACE_WIDGET_2_MS / 1000
+                        }
+                      />
+                    ) : (
+                      <WidgetLoading
+                        label={getWidget1LoadingLabel(analysisStatus)}
+                        estimatedSeconds={WORKSPACE_WIDGET_1_MS / 1000}
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
       </div>
 
       <ProgressIndicator

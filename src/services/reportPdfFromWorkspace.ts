@@ -1,12 +1,10 @@
 /**
- * Builds the branded PDF from workspace data only.
- * Report must not mention anything not in the workspace: uses getWorkspaceDataBlocks(analysis)
- * plus kpiRows and kpiSnapshotCaption. Evaluation (thesis, pros/cons) is produced at report
- * generation time from this data and is not included here until that flow exists.
+ * Builds the branded PDF from workspace document only.
+ * Report compiles strictly from workspace.blocks: narrative blocks → sections, kpiTable block → KPI section.
  */
 
-import type { AnalysisOutput, Company } from '../types';
-import { getWorkspaceDataBlocks } from '../utils/analysisNarrative';
+import type { Company } from '../types';
+import type { WorkspaceDocument } from '../types/workspace';
 import type { ReportTypeId } from '../types/app';
 
 // LensAI brand (aligned with README / styles)
@@ -39,10 +37,11 @@ function wrapWords(text: string, maxWidthPt: number, fontSize: number, charWidth
 }
 
 /**
- * Produce PDF bytes from workspace outputs only.
+ * Produce PDF bytes from workspace document only. Iterates workspace.blocks:
+ * narrative → one report section each; kpiTable → single KPI section.
  */
 export async function buildBrandedPdfFromWorkspace(params: {
-  analysis: AnalysisOutput;
+  workspace: WorkspaceDocument;
   company: Company;
   reportTypeId: ReportTypeId;
   title: string;
@@ -50,9 +49,12 @@ export async function buildBrandedPdfFromWorkspace(params: {
 }): Promise<Uint8Array> {
   const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
 
-  const sections = getWorkspaceDataBlocks(params.analysis);
-  const kpiRows = params.analysis.kpiRows ?? [];
-  const kpiCaption = params.analysis.kpiSnapshotCaption?.trim() ?? '';
+  const narrativeSections = params.workspace.blocks
+    .filter((b) => b.blockType === 'narrative')
+    .map((b) => ({ title: b.title, content: b.fullContent }));
+  const kpiBlock = params.workspace.blocks.find((b) => b.blockType === 'kpiTable');
+  const kpiRows = kpiBlock?.blockType === 'kpiTable' ? kpiBlock.rows : [];
+  const kpiCaption = kpiBlock?.blockType === 'kpiTable' && kpiBlock.caption ? kpiBlock.caption : '';
 
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -107,8 +109,8 @@ export async function buildBrandedPdfFromWorkspace(params: {
     }
   };
 
-  // --- Sections: workspace data only (same as workspace widgets) ---
-  for (const section of sections) {
+  // --- Sections: one per narrative block (same order as workspace) ---
+  for (const section of narrativeSections) {
     ensureSpace(80);
     // Section card background
     const blockTop = y + 6;

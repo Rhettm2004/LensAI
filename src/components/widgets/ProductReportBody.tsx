@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { AnalysisOutput } from '../../types';
-import { getNarrativeBlocks, getWorkspaceDataBlocks } from '../../utils/analysisNarrative';
+import { analysisOutputToWorkspaceDocument, getNarrativeSectionsFromWorkspace } from '../../utils/workspaceDocument';
+import { getNarrativeBlocks } from '../../utils/analysisNarrative';
 
 export type ProductReportBodyProps = {
   analysis: AnalysisOutput;
@@ -11,12 +12,13 @@ export type ProductReportBodyProps = {
 const PREVIEW_MAX_CHARS = 320;
 
 /**
- * Workspace: data-only blocks (company, business model, revenue, industry).
- * Report: full narrative (data + evaluation) for PDF.
+ * Workspace: data-only blocks from WorkspaceDocument. Report: full narrative (data + evaluation).
  */
 export const ProductReportBody: React.FC<ProductReportBodyProps> = ({ analysis, dataOnly = false }) => {
   const [expanded, setExpanded] = useState(false);
-  const blocks = dataOnly ? getWorkspaceDataBlocks(analysis) : getNarrativeBlocks(analysis);
+  const blocks = dataOnly
+    ? getNarrativeSectionsFromWorkspace(analysisOutputToWorkspaceDocument(analysis))
+    : getNarrativeBlocks(analysis);
   const fullText = blocks.map((b) => `${b.title}\n${b.content}`).join('\n\n');
   const preview =
     fullText.length > PREVIEW_MAX_CHARS ? `${fullText.slice(0, PREVIEW_MAX_CHARS)}…` : fullText;
