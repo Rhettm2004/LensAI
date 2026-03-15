@@ -17,5 +17,8 @@ export {
 } from './analysisService';
 export type { RunFundamentalAnalysisInput } from './analysisService';
 
-export { generateOverviewReport } from './reportService';
+export {
+  generateOverviewReport,
+  buildOverviewReportArtifactFromReport,
+} from './reportService';
 export type { GenerateOverviewReportInput } from './reportService';

@@ -5,7 +5,9 @@ import {
   getCompanyAnalysis,
   getCompanyForDisplay,
   generateOverviewReport,
+  buildOverviewReportArtifactFromReport,
 } from './services';
+import { buildBrandedPdfFromReport } from './services/reportPdfFromReport';
 import { analysisOutputToWorkspaceDocument } from './utils/workspaceDocument';
 import { buildOverviewReportDocument } from './utils/reportFromWorkspace';
 import { downloadReportPdfArtifact } from './services/reportPdfExport';
@@ -53,16 +55,40 @@ export const App: React.FC = () => {
   const selectReportToView = useCallback((reportType: ReportTypeId) => dispatch({ type: 'SELECT_REPORT_TO_VIEW', payload: reportType }), []);
 
   const handleExportPdf = useCallback(async () => {
+    const company = state.selectedCompany;
+    if (!company) return;
+
+    if (state.currentReportDocument) {
+      try {
+        const pdfBytes = await buildBrandedPdfFromReport({
+          reportDocument: state.currentReportDocument,
+          company,
+          reportTypeId: 'overview',
+          title: getReportTypeLabel('overview'),
+          generatedAtIso: state.currentReportDocument.generatedAt,
+        });
+        const artifact = buildOverviewReportArtifactFromReport(
+          state.currentReportDocument,
+          company,
+          pdfBytes
+        );
+        downloadReportPdfArtifact(artifact);
+      } catch {
+        generateReportFailed('overview', 'PDF export failed. Please try again.');
+      }
+      return;
+    }
+
     const existing = state.generatedReportByType.overview;
     if (existing?.pdfBytes?.length) {
       downloadReportPdfArtifact(existing);
       return;
     }
-    if (!state.selectedCompany || !state.analysisData) return;
+    if (!state.analysisData) return;
     try {
       const artifact = await generateOverviewReport({
-        ticker: state.selectedCompany.ticker,
-        company: state.selectedCompany,
+        ticker: company.ticker,
+        company,
         analysis: state.analysisData.analysis,
       });
       dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: { reportType: 'overview', artifact } });
@@ -70,7 +96,13 @@ export const App: React.FC = () => {
     } catch {
       generateReportFailed('overview', 'PDF export failed. Please try again.');
     }
-  }, [state.selectedCompany, state.analysisData, state.generatedReportByType.overview, generateReportFailed]);
+  }, [
+    state.selectedCompany,
+    state.analysisData,
+    state.generatedReportByType.overview,
+    state.currentReportDocument,
+    generateReportFailed,
+  ]);
 
   const effectiveCompany = state.selectedCompany ?? getCompanyForDisplay(state.tickerInput);
   const canGoBack = getPreviousScreen(state.screen) !== null;
