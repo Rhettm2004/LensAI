@@ -1,11 +1,12 @@
 /**
- * Builds the branded PDF strictly from Workspace analysis output.
- * ONLY reads: narrative fields via getNarrativeBlocks(analysis), kpiRows, kpiSnapshotCaption.
- * Does not use reportSections — no hidden report-only content.
+ * Builds the branded PDF from workspace data only.
+ * Report must not mention anything not in the workspace: uses getWorkspaceDataBlocks(analysis)
+ * plus kpiRows and kpiSnapshotCaption. Evaluation (thesis, pros/cons) is produced at report
+ * generation time from this data and is not included here until that flow exists.
  */
 
 import type { AnalysisOutput, Company } from '../types';
-import { getNarrativeBlocks } from '../utils/analysisNarrative';
+import { getWorkspaceDataBlocks } from '../utils/analysisNarrative';
 import type { ReportTypeId } from '../types/app';
 
 // LensAI brand (aligned with README / styles)
@@ -49,7 +50,7 @@ export async function buildBrandedPdfFromWorkspace(params: {
 }): Promise<Uint8Array> {
   const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
 
-  const sections = getNarrativeBlocks(params.analysis);
+  const sections = getWorkspaceDataBlocks(params.analysis);
   const kpiRows = params.analysis.kpiRows ?? [];
   const kpiCaption = params.analysis.kpiSnapshotCaption?.trim() ?? '';
 
@@ -106,7 +107,7 @@ export async function buildBrandedPdfFromWorkspace(params: {
     }
   };
 
-  // --- Sections: same blocks as expanded Product Report widget ---
+  // --- Sections: workspace data only (same as workspace widgets) ---
   for (const section of sections) {
     ensureSpace(80);
     // Section card background

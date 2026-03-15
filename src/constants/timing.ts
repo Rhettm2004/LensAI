@@ -3,7 +3,7 @@
  * Backend replacement should swap delays for real job polling elsewhere.
  */
 
-/** Workspace: first widget (Product Report) reveal after analysis data is loaded. */
+/** Workspace: first widget (Company & market data) reveal after analysis data is loaded. */
 export const WORKSPACE_WIDGET_1_MS = 1200;
 
 /** Workspace: second widget (KPI Table) reveal. */

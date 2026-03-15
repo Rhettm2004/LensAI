@@ -1,32 +1,37 @@
 import React, { useState } from 'react';
 import type { AnalysisOutput } from '../../types';
-import { getNarrativeBlocks } from '../../utils/analysisNarrative';
+import { getNarrativeBlocks, getWorkspaceDataBlocks } from '../../utils/analysisNarrative';
 
 export type ProductReportBodyProps = {
   analysis: AnalysisOutput;
+  /** When true, show only data blocks (workspace). When false, show full narrative (report). */
+  dataOnly?: boolean;
 };
 
 const PREVIEW_MAX_CHARS = 320;
 
 /**
- * Collapsed: concise preview only. Expanded: full narrative — same blocks that feed the PDF.
+ * Workspace: data-only blocks (company, business model, revenue, industry).
+ * Report: full narrative (data + evaluation) for PDF.
  */
-export const ProductReportBody: React.FC<ProductReportBodyProps> = ({ analysis }) => {
+export const ProductReportBody: React.FC<ProductReportBodyProps> = ({ analysis, dataOnly = false }) => {
   const [expanded, setExpanded] = useState(false);
-  const blocks = getNarrativeBlocks(analysis);
+  const blocks = dataOnly ? getWorkspaceDataBlocks(analysis) : getNarrativeBlocks(analysis);
   const fullText = blocks.map((b) => `${b.title}\n${b.content}`).join('\n\n');
   const preview =
     fullText.length > PREVIEW_MAX_CHARS ? `${fullText.slice(0, PREVIEW_MAX_CHARS)}…` : fullText;
 
   if (blocks.length === 0) {
-    return <div style={{ fontSize: 13, color: '#a3a7c2' }}>No narrative content available.</div>;
+    return <div style={{ fontSize: 13, color: '#a3a7c2' }}>No data available.</div>;
   }
 
   if (!expanded) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ fontSize: 12, color: '#a3a7c2' }}>
-          Preview — everything below also appears in the generated report PDF.
+          {dataOnly
+            ? 'Preview — factual data only. Evaluation (thesis, pros/cons) is produced when you generate a report.'
+            : 'Preview — full narrative (data + evaluation) for the report PDF.'}
         </div>
         <div style={{ fontSize: 13, whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>{preview}</div>
         {fullText.length > PREVIEW_MAX_CHARS && (
@@ -36,7 +41,7 @@ export const ProductReportBody: React.FC<ProductReportBodyProps> = ({ analysis }
             style={{ alignSelf: 'flex-start', fontSize: 12 }}
             onClick={() => setExpanded(true)}
           >
-            Expand full Product Report
+            {dataOnly ? 'Expand full data overview' : 'Expand full report narrative'}
           </button>
         )}
         {fullText.length <= PREVIEW_MAX_CHARS && (
@@ -56,7 +61,9 @@ export const ProductReportBody: React.FC<ProductReportBodyProps> = ({ analysis }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ fontSize: 12, color: '#a3a7c2' }}>
-        Full narrative (source for report PDF). Collapse to return to preview.
+        {dataOnly
+          ? 'Full data overview. Collapse to return to preview.'
+          : 'Full narrative (source for report PDF). Collapse to return to preview.'}
       </div>
       {blocks.map((block) => (
         <div key={block.title} style={{ borderLeft: '3px solid #5B6CFF', paddingLeft: 12 }}>

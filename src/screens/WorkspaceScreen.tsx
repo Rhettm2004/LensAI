@@ -5,8 +5,9 @@ import {
   WORKSPACE_WIDGET_1_MS,
   WORKSPACE_WIDGET_2_MS,
 } from '../constants';
+import { WORKSPACE_DATA_WIDGETS, getWorkspaceDataWidgetContent } from '../constants/workspaceWidgets';
 import { ErrorCallout } from '../components/feedback';
-import { WidgetLoading, KpiTable, ProductReportBody } from '../components/widgets';
+import { WidgetLoading, KpiTable, DataBlockWidget } from '../components/widgets';
 import { ProgressIndicator } from '../components/progress';
 import { getProgressMessage, getWidget1LoadingLabel } from '../utils/workspaceMessages';
 
@@ -45,7 +46,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
         <div className="app-section-eyebrow">Screen 3 · Workspace</div>
         <div className="app-section-title">Processed Outputs</div>
         <div className="app-section-subtitle">
-          Structured AI outputs for the selected company, presented as modular widgets.
+          Data for the selected company — verify it&apos;s correct and understandable. Evaluation (thesis, pros/cons) is produced when you generate a report.
         </div>
       </div>
 
@@ -74,27 +75,34 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
       {!showError && (
         <>
       <div className="workspace-layout">
-        <div className="widget-card">
-          <div className="widget-header">
-            <div className="widget-title-group">
-              <div className="widget-title">Product Report</div>
-              <div className="widget-subtitle">
-                Concise business model and positioning overview.
+        {WORKSPACE_DATA_WIDGETS.map((config) => {
+          const content = widget1Visible && analysis ? getWorkspaceDataWidgetContent(analysis, config.key) : '';
+          const isEmpty = !content;
+          const showLoading = !widget1Visible;
+          return (
+            <div key={config.id} className="widget-card">
+              <div className="widget-header">
+                <div className="widget-title-group">
+                  <div className="widget-title">{config.title}</div>
+                  <div className="widget-subtitle">{config.subtitle}</div>
+                </div>
+                <span className="widget-pill">{config.pill}</span>
+              </div>
+              <div className="widget-body">
+                {showLoading ? (
+                  <WidgetLoading
+                    label={getWidget1LoadingLabel(analysisStatus)}
+                    estimatedSeconds={WORKSPACE_WIDGET_1_MS / 1000}
+                  />
+                ) : isEmpty ? (
+                  <div style={{ fontSize: 13, color: '#a3a7c2' }}>No data available.</div>
+                ) : (
+                  <DataBlockWidget content={content} />
+                )}
               </div>
             </div>
-            <span className="widget-pill">Narrative Analysis</span>
-          </div>
-          <div className="widget-body">
-            {!widget1Visible ? (
-              <WidgetLoading
-                label={getWidget1LoadingLabel(analysisStatus)}
-                estimatedSeconds={WORKSPACE_WIDGET_1_MS / 1000}
-              />
-            ) : (
-              <ProductReportBody analysis={analysis!} />
-            )}
-          </div>
-        </div>
+          );
+        })}
 
         <div className="widget-card">
           <div className="widget-header">

@@ -7,7 +7,7 @@ import { REPORT_GENERATION_MOCK_MS } from '../constants/timing';
 import type { AnalysisOutput, Company } from '../types';
 import type { GeneratedReportArtifact } from '../types/reportDocument';
 import { getReportTypeLabel } from '../state/constants';
-import { getNarrativeBlocks } from '../utils/analysisNarrative';
+import { getWorkspaceDataBlocks } from '../utils/analysisNarrative';
 import { buildBrandedPdfFromWorkspace } from './reportPdfFromWorkspace';
 
 export interface GenerateOverviewReportInput {
@@ -25,7 +25,7 @@ export async function generateOverviewReport(
 ): Promise<GeneratedReportArtifact> {
   await new Promise((resolve) => setTimeout(resolve, REPORT_GENERATION_MOCK_MS));
 
-  const narrativeBlocks = getNarrativeBlocks(input.analysis);
+  const narrativeBlocks = getWorkspaceDataBlocks(input.analysis);
   const kpiRows = input.analysis.kpiRows ?? [];
   const generatedAt = new Date().toISOString();
   const title = getReportTypeLabel('overview');

@@ -42,8 +42,9 @@ export interface ReportSection {
 export type AnalysisStatus = 'idle' | 'running' | 'complete';
 
 /**
- * Workspace narrative source of truth. Report PDF must be built only from these fields
- * (+ kpiRows). Do not add parallel report-only arrays.
+ * Analysis output: data (workspace) + evaluation (report).
+ * Workspace shows only data: companySummary, businessModelOverview, revenueDrivers, industryPositioning (+ kpiRows).
+ * Report PDF and report generation use full narrative (data + investmentThesis, keyPositives, keyNegatives, creditAndEsg).
  */
 export interface AnalysisOutput {
   companySummary: string;
@@ -51,7 +52,7 @@ export interface AnalysisOutput {
   businessModelOverview: string;
   revenueDrivers: string;
   industryPositioning: string;
-  /** Newline-separated bullets or prose; same content shown in expanded widget + PDF. */
+  /** Evaluation: used in report PDF, not displayed in workspace. */
   keyPositives: string;
   keyNegatives: string;
   creditAndEsg: string;

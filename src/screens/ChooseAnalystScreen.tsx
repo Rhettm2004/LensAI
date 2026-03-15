@@ -46,7 +46,7 @@ export const ChooseAnalystScreen: React.FC<ChooseAnalystScreenProps> = ({
         <div className="analyst-list" style={{ marginTop: 8 }}>
           <div>Outputs:</div>
           <ul>
-            <li>Product Report</li>
+            <li>Company &amp; market data</li>
             <li>KPI Table</li>
           </ul>
         </div>
