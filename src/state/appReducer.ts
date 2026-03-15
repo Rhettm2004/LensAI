@@ -45,7 +45,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'GO_TO_SCREEN': {
       const newIndex = SCREEN_ORDER.indexOf(action.payload);
       const nextMax = Math.max(state.maxStepReached, newIndex);
-      const clearReportDoc = action.payload !== 'report-viewer' ? { currentReportDocument: null } : {};
+      const keepReportContext = action.payload === 'report-viewer' || action.payload === 'export';
+      const clearReportDoc = keepReportContext ? {} : { currentReportDocument: null };
       return { ...state, screen: action.payload, maxStepReached: nextMax, ...clearReportDoc };
     }
 

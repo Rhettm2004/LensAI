@@ -12,7 +12,8 @@ export type ScreenId =
   | 'choose-analyst'
   | 'workspace'
   | 'reporting-engine'
-  | 'report-viewer';
+  | 'report-viewer'
+  | 'export';
 
 export type AnalystId = 'fundamental';
 

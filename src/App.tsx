@@ -23,6 +23,7 @@ import {
   WorkspaceScreen,
   ReportingEngineScreen,
   ReportWorkspaceScreen,
+  ExportScreen,
 } from './screens';
 
 export const App: React.FC = () => {
@@ -276,7 +277,26 @@ export const App: React.FC = () => {
                 reportTypeLabel={getReportTypeLabel(state.activeReportType ?? 'overview')}
                 onBack={goBack}
                 onRegenerate={() => goToScreen('reporting-engine')}
+                onGoToExport={() => goToScreen('export')}
+              />
+            );
+          })()}
+          {state.screen === 'export' && (() => {
+            const effectiveReportDocument =
+              state.currentReportDocument ??
+              (state.analysisData
+                ? buildOverviewReportDocument(
+                    analysisOutputToWorkspaceDocument(state.analysisData.analysis),
+                    state.analysisData.analysis
+                  )
+                : null);
+            return (
+              <ExportScreen
+                company={effectiveCompany}
+                reportDocument={effectiveReportDocument}
+                reportTypeLabel={getReportTypeLabel(state.activeReportType ?? 'overview')}
                 onExportPdf={handleExportPdf}
+                onBackToAnalysisWorkspace={() => goToScreen('report-viewer')}
               />
             );
           })()}

@@ -20,7 +20,7 @@ export type ReportWorkspaceScreenProps = {
   reportTypeLabel: string;
   onBack: () => void;
   onRegenerate: () => void;
-  onExportPdf: () => void;
+  onGoToExport: () => void;
 };
 
 export const ReportWorkspaceScreen: React.FC<ReportWorkspaceScreenProps> = ({
@@ -29,7 +29,7 @@ export const ReportWorkspaceScreen: React.FC<ReportWorkspaceScreenProps> = ({
   reportTypeLabel,
   onBack,
   onRegenerate,
-  onExportPdf,
+  onGoToExport,
 }) => {
   const overviewSummary = reportDocument ? getBlockById(reportDocument, OVERVIEW_SUMMARY_ID) : undefined;
   const investmentThesis = reportDocument ? getBlockById(reportDocument, INVESTMENT_THESIS_ID) : undefined;
@@ -40,10 +40,10 @@ export const ReportWorkspaceScreen: React.FC<ReportWorkspaceScreenProps> = ({
   return (
     <div>
       <div className="app-section-header">
-        <div className="app-section-eyebrow">Step 5 · Report Workspace</div>
-        <div className="app-section-title">Report Workspace</div>
+        <div className="app-section-eyebrow">Step 5 · Analysis Workspace</div>
+        <div className="app-section-title">Analysis Workspace</div>
         <div className="app-section-subtitle">
-          Structured report built from your research. Inspect each block; export to PDF when ready.
+          Structured report built from your research. Inspect each block; go to Export when ready.
         </div>
       </div>
 
@@ -61,8 +61,8 @@ export const ReportWorkspaceScreen: React.FC<ReportWorkspaceScreenProps> = ({
         <button type="button" className="button-ghost" onClick={onRegenerate}>
           Regenerate report
         </button>
-        <button type="button" className="button-secondary" onClick={onExportPdf}>
-          Export PDF
+        <button type="button" className="button-primary" onClick={onGoToExport}>
+          Go to Export
         </button>
       </div>
 
@@ -90,7 +90,7 @@ export const ReportWorkspaceScreen: React.FC<ReportWorkspaceScreenProps> = ({
       ) : (
         <div className="report-section">
           <div className="report-body">
-            No report document available. Go to the Reporting Engine and generate an Overview Report.
+            No report document available. Go to the Analysis Engine and generate an Overview Report.
           </div>
         </div>
       )}

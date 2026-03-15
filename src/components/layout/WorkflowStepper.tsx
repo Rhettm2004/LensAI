@@ -3,6 +3,7 @@ import type { ScreenId } from '../../types';
 import { WORKFLOW_STEPS, getCurrentStepIndex } from '../../state';
 
 const REPORT_WORKSPACE_STEP_INDEX = 4;
+const EXPORT_STEP_INDEX = 5;
 
 export type WorkflowStepperProps = {
   currentScreen: ScreenId;

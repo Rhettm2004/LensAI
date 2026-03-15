@@ -10,14 +10,16 @@ export const SCREEN_ORDER: ScreenId[] = [
   'workspace',
   'reporting-engine',
   'report-viewer',
+  'export',
 ];
 
 export const WORKFLOW_STEPS: { id: ScreenId; label: string }[] = [
   { id: 'select-company', label: 'Company Selection' },
   { id: 'choose-analyst', label: 'Analysis Setup' },
   { id: 'workspace', label: 'Research Workspace' },
-  { id: 'reporting-engine', label: 'Reporting Engine' },
-  { id: 'report-viewer', label: 'Report Workspace' },
+  { id: 'reporting-engine', label: 'Analysis Engine' },
+  { id: 'report-viewer', label: 'Analysis Workspace' },
+  { id: 'export', label: 'Export' },
 ];
 
 export const INITIAL_GENERATED_REPORT_BY_TYPE: GeneratedReportByType = {

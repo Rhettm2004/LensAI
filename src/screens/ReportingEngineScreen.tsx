@@ -42,8 +42,8 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
   return (
     <div>
       <div className="app-section-header">
-        <div className="app-section-eyebrow">Step 4 · Reporting Engine</div>
-        <div className="app-section-title">Evaluation &amp; Reporting Engine</div>
+        <div className="app-section-eyebrow">Step 4 · Analysis Engine</div>
+        <div className="app-section-title">Analysis Engine</div>
         <div className="app-section-subtitle">
           {reportingEngineState === 'engine'
             ? 'Generate report outputs from your completed analysis. Choose a report type below and click Generate or View.'
