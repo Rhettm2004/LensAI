@@ -5,6 +5,7 @@
 import type { Company } from '../types';
 import type { CompanyAnalysisResponse } from '../types';
 import type { GeneratedReportArtifact } from '../types/reportDocument';
+import type { ReportDocument } from '../types/report';
 import type {
   AppState,
   ScreenId,
@@ -35,6 +36,7 @@ export type AppAction =
   | { type: 'COMPLETE_GENERATE_REPORT'; payload: { reportType: ReportTypeId; artifact: GeneratedReportArtifact } }
   | { type: 'GENERATE_REPORT_FAILED'; payload: { reportType: ReportTypeId; message: string } }
   | { type: 'OPEN_REPORT_VIEWER'; payload: ReportTypeId }
+  | { type: 'OPEN_REPORT_WORKSPACE'; payload: { reportType: ReportTypeId; reportDocument: ReportDocument | null } }
   | { type: 'SELECT_REPORT_TO_VIEW'; payload: ReportTypeId }
   | { type: 'BACK_TO_REPORTING_ENGINE' };
 
@@ -43,12 +45,14 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'GO_TO_SCREEN': {
       const newIndex = SCREEN_ORDER.indexOf(action.payload);
       const nextMax = Math.max(state.maxStepReached, newIndex);
-      return { ...state, screen: action.payload, maxStepReached: nextMax };
+      const clearReportDoc = action.payload !== 'report-viewer' ? { currentReportDocument: null } : {};
+      return { ...state, screen: action.payload, maxStepReached: nextMax, ...clearReportDoc };
     }
 
     case 'GO_BACK': {
       const prev = getPreviousScreen(state.screen);
-      return prev ? { ...state, screen: prev } : state;
+      const clearReportDoc = state.screen === 'report-viewer' ? { currentReportDocument: null } : {};
+      return prev ? { ...state, screen: prev, ...clearReportDoc } : state;
     }
 
     case 'SET_TICKER_INPUT':
@@ -149,6 +153,15 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         maxStepReached: Math.max(state.maxStepReached, 4),
       };
 
+    case 'OPEN_REPORT_WORKSPACE':
+      return {
+        ...state,
+        screen: 'report-viewer',
+        activeReportType: action.payload.reportType,
+        currentReportDocument: action.payload.reportDocument,
+        maxStepReached: Math.max(state.maxStepReached, 4),
+      };
+
     case 'SELECT_REPORT_TO_VIEW':
       return { ...state, activeReportType: action.payload };
 
@@ -175,5 +188,6 @@ export function getInitialAppState(): AppState {
     reportingEngineState: 'engine',
     generatingReportType: null,
     activeReportType: null,
+    currentReportDocument: null,
   };
 }

@@ -843,6 +843,16 @@ body {
   color: var(--color-text-muted);
 }
 
+.report-block-empty {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.report-block-card .widget-body {
+  min-height: 80px;
+}
+
 .bullet-list {
   margin: 6px 0 0;
   padding-left: 18px;

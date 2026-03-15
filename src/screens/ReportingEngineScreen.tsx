@@ -11,7 +11,7 @@ export type ReportingEngineScreenProps = {
   generatingReportType: ReportTypeId | null;
   reportGenerationError: string | null;
   onStartGenerateReport: (reportType: ReportTypeId) => void;
-  onOpenReportViewer: (reportType: ReportTypeId) => void;
+  onOpenReportWorkspace: (reportType: ReportTypeId) => void;
 };
 
 export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
@@ -21,7 +21,7 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
   generatingReportType,
   reportGenerationError,
   onStartGenerateReport,
-  onOpenReportViewer,
+  onOpenReportWorkspace,
 }) => {
   const reportTypeBeingGenerated = generatingReportType ?? 'overview';
 
@@ -73,7 +73,7 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
                         <button
                           type="button"
                           className="button-primary"
-                          onClick={() => onOpenReportViewer(config.id)}
+                          onClick={() => onOpenReportWorkspace(config.id)}
                         >
                           View
                         </button>
@@ -82,7 +82,10 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
                             type="button"
                             className="button-ghost"
                             style={{ fontSize: 12 }}
-                            onClick={() => onStartGenerateReport(config.id)}
+                            onClick={() => {
+                              onStartGenerateReport(config.id);
+                              onOpenReportWorkspace(config.id);
+                            }}
                           >
                             Regenerate
                           </button>
@@ -92,7 +95,14 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
                       <button
                         type="button"
                         className="button-primary"
-                        onClick={() => onStartGenerateReport(config.id)}
+                        onClick={() => {
+                          if (config.id === 'overview') {
+                            onOpenReportWorkspace(config.id);
+                            onStartGenerateReport(config.id);
+                          } else {
+                            onStartGenerateReport(config.id);
+                          }
+                        }}
                       >
                         Generate
                       </button>

@@ -49,8 +49,8 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
   return (
     <div>
       <div className="app-section-header">
-        <div className="app-section-eyebrow">Screen 3 · Workspace</div>
-        <div className="app-section-title">Processed Outputs</div>
+        <div className="app-section-eyebrow">Step 3 · Research Workspace</div>
+        <div className="app-section-title">Research Workspace</div>
         <div className="app-section-subtitle">
           Data for the selected company — verify it&apos;s correct and understandable. Evaluation (thesis, pros/cons) is produced when you generate a report.
         </div>

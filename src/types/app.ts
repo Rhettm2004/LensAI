@@ -5,6 +5,7 @@
 
 import type { Company, CompanyAnalysisResponse } from './index';
 import type { GeneratedReportArtifact } from './reportDocument';
+import type { ReportDocument } from './report';
 
 export type ScreenId =
   | 'select-company'
@@ -56,4 +57,6 @@ export type AppState = {
   reportingEngineState: ReportingEngineState;
   generatingReportType: ReportTypeId | null;
   activeReportType: ReportTypeId | null;
+  /** Report document shown in Report Workspace (overview flow). Cleared when leaving. */
+  currentReportDocument: ReportDocument | null;
 };

@@ -2,7 +2,7 @@ import React from 'react';
 import type { ScreenId } from '../../types';
 import { WORKFLOW_STEPS, getCurrentStepIndex } from '../../state';
 
-const REPORT_VIEWER_STEP_INDEX = 4;
+const REPORT_WORKSPACE_STEP_INDEX = 4;
 
 export type WorkflowStepperProps = {
   currentScreen: ScreenId;
@@ -25,8 +25,9 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
         const isCurrent = step.id === currentScreen;
         const isCompleted = index < currentIndex;
         const stepUnlockedByProgress = index <= maxStepReached;
-        const step5RequiresReport = index === REPORT_VIEWER_STEP_INDEX ? hasAnyReportGenerated : true;
-        const isClickable = stepUnlockedByProgress && step5RequiresReport;
+        const isReportWorkspaceStep = index === REPORT_WORKSPACE_STEP_INDEX;
+        const step5Clickable = isReportWorkspaceStep ? stepUnlockedByProgress : true;
+        const isClickable = stepUnlockedByProgress && step5Clickable;
         const isUnlockedFuture = index > currentIndex && isClickable;
         const isLocked = !isClickable;
 

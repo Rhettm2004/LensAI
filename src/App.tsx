@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useReducer } from 'react';
 import type { Company, ScreenId, AppAnalysisStatus, ReportTypeId } from './types';
-import { appReducer, getInitialAppState, getPreviousScreen, hasAnyReportGenerated } from './state';
+import { appReducer, getInitialAppState, getPreviousScreen, hasAnyReportGenerated, getReportTypeLabel } from './state';
 import {
   getCompanyAnalysis,
   getCompanyForDisplay,
   generateOverviewReport,
 } from './services';
+import { analysisOutputToWorkspaceDocument } from './utils/workspaceDocument';
+import { buildOverviewReportDocument } from './utils/reportFromWorkspace';
+import { downloadReportPdfArtifact } from './services/reportPdfExport';
 import {
   WORKSPACE_WIDGET_1_MS,
   WORKSPACE_WIDGET_2_MS,
@@ -17,7 +20,7 @@ import {
   ChooseAnalystScreen,
   WorkspaceScreen,
   ReportingEngineScreen,
-  ReportViewerScreen,
+  ReportWorkspaceScreen,
 } from './screens';
 
 export const App: React.FC = () => {
@@ -35,7 +38,39 @@ export const App: React.FC = () => {
     dispatch({ type: 'GENERATE_REPORT_FAILED', payload: { reportType, message } });
   }, []);
   const openReportViewer = useCallback((reportType: ReportTypeId) => dispatch({ type: 'OPEN_REPORT_VIEWER', payload: reportType }), []);
+  const openReportWorkspace = useCallback(
+    (reportType: ReportTypeId) => {
+      if (reportType === 'overview' && state.analysisData) {
+        const workspace = analysisOutputToWorkspaceDocument(state.analysisData.analysis);
+        const reportDocument = buildOverviewReportDocument(workspace);
+        dispatch({ type: 'OPEN_REPORT_WORKSPACE', payload: { reportType, reportDocument } });
+      } else {
+        dispatch({ type: 'OPEN_REPORT_WORKSPACE', payload: { reportType, reportDocument: null } });
+      }
+    },
+    [state.analysisData]
+  );
   const selectReportToView = useCallback((reportType: ReportTypeId) => dispatch({ type: 'SELECT_REPORT_TO_VIEW', payload: reportType }), []);
+
+  const handleExportPdf = useCallback(async () => {
+    const existing = state.generatedReportByType.overview;
+    if (existing?.pdfBytes?.length) {
+      downloadReportPdfArtifact(existing);
+      return;
+    }
+    if (!state.selectedCompany || !state.analysisData) return;
+    try {
+      const artifact = await generateOverviewReport({
+        ticker: state.selectedCompany.ticker,
+        company: state.selectedCompany,
+        analysis: state.analysisData.analysis,
+      });
+      dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: { reportType: 'overview', artifact } });
+      downloadReportPdfArtifact(artifact);
+    } catch {
+      generateReportFailed('overview', 'PDF export failed. Please try again.');
+    }
+  }, [state.selectedCompany, state.analysisData, state.generatedReportByType.overview, generateReportFailed]);
 
   const effectiveCompany = state.selectedCompany ?? getCompanyForDisplay(state.tickerInput);
   const canGoBack = getPreviousScreen(state.screen) !== null;
@@ -190,15 +225,17 @@ export const App: React.FC = () => {
               generatingReportType={state.generatingReportType}
               reportGenerationError={state.reportGenerationError}
               onStartGenerateReport={startGenerateReport}
-              onOpenReportViewer={openReportViewer}
+              onOpenReportWorkspace={openReportWorkspace}
             />
           )}
           {state.screen === 'report-viewer' && (
-            <ReportViewerScreen
+            <ReportWorkspaceScreen
               company={effectiveCompany}
-              generatedReportByType={state.generatedReportByType}
-              activeReportType={state.activeReportType}
-              onSelectReport={selectReportToView}
+              reportDocument={state.currentReportDocument}
+              reportTypeLabel={state.activeReportType ? getReportTypeLabel(state.activeReportType) : 'Report'}
+              onBack={goBack}
+              onRegenerate={() => goToScreen('reporting-engine')}
+              onExportPdf={handleExportPdf}
             />
           )}
         </main>
