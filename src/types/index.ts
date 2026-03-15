@@ -93,6 +93,14 @@ export interface OverviewReportResult {
 export type { GeneratedReportArtifact, GeneratedReportDocument, WorkspaceReportSourceSnapshot } from './reportDocument';
 export { hasReportDocument } from './reportDocument';
 
+export type {
+  ReportDocument,
+  ReportBlock,
+  ReportNarrativeBlock,
+  ReportBulletsBlock,
+  ReportKpiHighlightsBlock,
+} from './report';
+
 // Re-export app state types for convenience
 export type {
   ScreenId,
