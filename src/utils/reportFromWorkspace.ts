@@ -1,8 +1,10 @@
 /**
  * Builds ReportDocument from WorkspaceDocument. Deterministic, rule-based only.
  * Same WorkspaceDocument in -> same ReportDocument shape out.
+ * When AnalysisOutput is provided, Investment Thesis and Key Positives/Negatives are filled from it.
  */
 
+import type { AnalysisOutput } from '../types';
 import type { WorkspaceDocument, WorkspaceBlock } from '../types/workspace';
 import type {
   ReportDocument,
@@ -11,6 +13,14 @@ import type {
   ReportBulletsBlock,
   ReportKpiHighlightsBlock,
 } from '../types/report';
+
+function bulletsFromNewlineString(s: string | undefined): string[] {
+  if (s == null || !s.trim()) return [];
+  return s
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
 
 function findBlockById(workspaceDoc: WorkspaceDocument, id: string): WorkspaceBlock | undefined {
   return workspaceDoc.blocks.find((b) => b.id === id);
@@ -54,7 +64,7 @@ const OVERVIEW_BLOCK_SPEC = [
   },
 ] as const;
 
-function buildOverviewBlocks(workspaceDoc: WorkspaceDocument): ReportBlock[] {
+function buildOverviewBlocks(workspaceDoc: WorkspaceDocument, analysis?: AnalysisOutput): ReportBlock[] {
   const blocks: ReportBlock[] = [];
 
   for (const spec of OVERVIEW_BLOCK_SPEC) {
@@ -64,8 +74,11 @@ function buildOverviewBlocks(workspaceDoc: WorkspaceDocument): ReportBlock[] {
     const sourceBlockIds = sourceBlock ? [sourceBlock.id] : [];
 
     if (spec.kind === 'reportNarrative') {
-      const content =
+      let content =
         sourceBlock?.blockType === 'narrative' ? sourceBlock.fullContent.trim() : '';
+      if (spec.reportId === 'investmentThesis' && analysis?.investmentThesis?.trim()) {
+        content = analysis.investmentThesis.trim();
+      }
       blocks.push({
         blockType: 'reportNarrative',
         id: spec.reportId,
@@ -74,11 +87,17 @@ function buildOverviewBlocks(workspaceDoc: WorkspaceDocument): ReportBlock[] {
         sourceBlockIds,
       } satisfies ReportNarrativeBlock);
     } else if (spec.kind === 'reportBullets') {
+      let items: string[] = [];
+      if (spec.reportId === 'keyPositives' && analysis?.keyPositives != null) {
+        items = bulletsFromNewlineString(analysis.keyPositives);
+      } else if (spec.reportId === 'keyNegatives' && analysis?.keyNegatives != null) {
+        items = bulletsFromNewlineString(analysis.keyNegatives);
+      }
       blocks.push({
         blockType: 'reportBullets',
         id: spec.reportId,
         title: spec.title,
-        items: [],
+        items,
         sourceBlockIds,
       } satisfies ReportBulletsBlock);
     } else {
@@ -101,13 +120,17 @@ function buildOverviewBlocks(workspaceDoc: WorkspaceDocument): ReportBlock[] {
 
 /**
  * Builds an overview ReportDocument from a WorkspaceDocument.
+ * When analysis is provided, Investment Thesis and Key Positives/Negatives are filled from it.
  * Deterministic: no AI, no randomness. Always emits all five overview blocks;
- * missing workspace data yields empty content/items/rows and sourceBlockIds [].
+ * missing workspace/analysis data yields empty content/items/rows and sourceBlockIds [].
  */
-export function buildOverviewReportDocument(workspaceDoc: WorkspaceDocument): ReportDocument {
+export function buildOverviewReportDocument(
+  workspaceDoc: WorkspaceDocument,
+  analysis?: AnalysisOutput
+): ReportDocument {
   const generatedAt = new Date().toISOString();
   const sourceWorkspaceDocumentId = deriveSourceWorkspaceDocumentId(workspaceDoc);
-  const blocks = buildOverviewBlocks(workspaceDoc);
+  const blocks = buildOverviewBlocks(workspaceDoc, analysis);
 
   return {
     id: `report-overview-${sourceWorkspaceDocumentId}-${generatedAt}`,

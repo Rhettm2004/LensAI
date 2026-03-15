@@ -42,7 +42,7 @@ export const App: React.FC = () => {
     (reportType: ReportTypeId) => {
       if (reportType === 'overview' && state.analysisData) {
         const workspace = analysisOutputToWorkspaceDocument(state.analysisData.analysis);
-        const reportDocument = buildOverviewReportDocument(workspace);
+        const reportDocument = buildOverviewReportDocument(workspace, state.analysisData.analysis);
         dispatch({ type: 'OPEN_REPORT_WORKSPACE', payload: { reportType, reportDocument } });
       } else {
         dispatch({ type: 'OPEN_REPORT_WORKSPACE', payload: { reportType, reportDocument: null } });
@@ -228,16 +228,26 @@ export const App: React.FC = () => {
               onOpenReportWorkspace={openReportWorkspace}
             />
           )}
-          {state.screen === 'report-viewer' && (
-            <ReportWorkspaceScreen
-              company={effectiveCompany}
-              reportDocument={state.currentReportDocument}
-              reportTypeLabel={state.activeReportType ? getReportTypeLabel(state.activeReportType) : 'Report'}
-              onBack={goBack}
-              onRegenerate={() => goToScreen('reporting-engine')}
-              onExportPdf={handleExportPdf}
-            />
-          )}
+          {state.screen === 'report-viewer' && (() => {
+            const effectiveReportDocument =
+              state.currentReportDocument ??
+              (state.analysisData
+                ? buildOverviewReportDocument(
+                    analysisOutputToWorkspaceDocument(state.analysisData.analysis),
+                    state.analysisData.analysis
+                  )
+                : null);
+            return (
+              <ReportWorkspaceScreen
+                company={effectiveCompany}
+                reportDocument={effectiveReportDocument}
+                reportTypeLabel={getReportTypeLabel(state.activeReportType ?? 'overview')}
+                onBack={goBack}
+                onRegenerate={() => goToScreen('reporting-engine')}
+                onExportPdf={handleExportPdf}
+              />
+            );
+          })()}
         </main>
 
         <footer className="app-footer">

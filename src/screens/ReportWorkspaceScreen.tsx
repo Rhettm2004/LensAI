@@ -1,8 +1,18 @@
 import React from 'react';
 import type { Company } from '../types';
-import type { ReportDocument } from '../types/report';
+import type { ReportDocument, ReportBlock } from '../types/report';
 import { getReportTypeLabel } from '../state';
 import { ReportBlockCard } from '../components/report/ReportBlockCard';
+
+const OVERVIEW_SUMMARY_ID = 'overviewSummary';
+const INVESTMENT_THESIS_ID = 'investmentThesis';
+const FINANCIAL_TAKEAWAYS_ID = 'financialTakeaways';
+const KEY_POSITIVES_ID = 'keyPositives';
+const KEY_NEGATIVES_ID = 'keyNegatives';
+
+function getBlockById(doc: ReportDocument, id: string): ReportBlock | undefined {
+  return doc.blocks.find((b) => b.id === id);
+}
 
 export type ReportWorkspaceScreenProps = {
   company: Company;
@@ -21,6 +31,12 @@ export const ReportWorkspaceScreen: React.FC<ReportWorkspaceScreenProps> = ({
   onRegenerate,
   onExportPdf,
 }) => {
+  const overviewSummary = reportDocument ? getBlockById(reportDocument, OVERVIEW_SUMMARY_ID) : undefined;
+  const investmentThesis = reportDocument ? getBlockById(reportDocument, INVESTMENT_THESIS_ID) : undefined;
+  const financialTakeaways = reportDocument ? getBlockById(reportDocument, FINANCIAL_TAKEAWAYS_ID) : undefined;
+  const keyPositives = reportDocument ? getBlockById(reportDocument, KEY_POSITIVES_ID) : undefined;
+  const keyNegatives = reportDocument ? getBlockById(reportDocument, KEY_NEGATIVES_ID) : undefined;
+
   return (
     <div>
       <div className="app-section-header">
@@ -55,10 +71,20 @@ export const ReportWorkspaceScreen: React.FC<ReportWorkspaceScreenProps> = ({
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 12 }}>
             Generated {new Date(reportDocument.generatedAt).toLocaleString()} · {reportDocument.blocks.length} blocks
           </div>
-          <div className="workspace-layout" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {reportDocument.blocks.map((block) => (
-              <ReportBlockCard key={block.id} block={block} />
-            ))}
+          <div className="report-workspace-layout">
+            {overviewSummary && (
+              <div className="report-workspace-row report-workspace-row-full">
+                <ReportBlockCard key={overviewSummary.id} block={overviewSummary} />
+              </div>
+            )}
+            <div className="report-workspace-row report-workspace-row-half">
+              {investmentThesis && <ReportBlockCard key={investmentThesis.id} block={investmentThesis} />}
+              {financialTakeaways && <ReportBlockCard key={financialTakeaways.id} block={financialTakeaways} />}
+            </div>
+            <div className="report-workspace-row report-workspace-row-half">
+              {keyPositives && <ReportBlockCard key={keyPositives.id} block={keyPositives} />}
+              {keyNegatives && <ReportBlockCard key={keyNegatives.id} block={keyNegatives} />}
+            </div>
           </div>
         </>
       ) : (
