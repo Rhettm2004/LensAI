@@ -7,7 +7,7 @@ export type { AppAction } from './appReducer';
 export {
   SCREEN_ORDER,
   WORKFLOW_STEPS,
-  INITIAL_GENERATED_REPORTS,
+  INITIAL_GENERATED_REPORT_BY_TYPE,
   REPORT_TYPE_CONFIG,
   hasAnyReportGenerated,
   getReportTypeLabel,

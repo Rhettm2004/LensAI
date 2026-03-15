@@ -41,12 +41,27 @@ export interface ReportSection {
 
 export type AnalysisStatus = 'idle' | 'running' | 'complete';
 
+/**
+ * Workspace narrative source of truth. Report PDF must be built only from these fields
+ * (+ kpiRows). Do not add parallel report-only arrays.
+ */
 export interface AnalysisOutput {
   companySummary: string;
+  investmentThesis: string;
   businessModelOverview: string;
   revenueDrivers: string;
   industryPositioning: string;
+  /** Newline-separated bullets or prose; same content shown in expanded widget + PDF. */
+  keyPositives: string;
+  keyNegatives: string;
+  creditAndEsg: string;
+  /** Optional caption above KPI table in Workspace + PDF KPI section. */
+  kpiSnapshotCaption?: string;
   kpiRows: KpiRow[];
+  /**
+   * @deprecated Do not use for report generation. Use getNarrativeBlocks(analysis) only.
+   * Kept empty in mock for backend compatibility during migration.
+   */
   reportSections: ReportSection[];
   analysisStatus: AnalysisStatus;
 }
@@ -64,10 +79,18 @@ export interface CompanyAnalysisResponse {
 // Service input/output types (API-shaped, for future backend)
 // ---------------------------------------------------------------------------
 
+/**
+ * @deprecated Use GeneratedReportDocument; kept for backend alignment during migration.
+ * Overview payloads are now full documents (title, company, generatedAt, …).
+ */
 export interface OverviewReportResult {
   reportType: 'overview';
   sections: ReportSection[];
+  kpiRows: KpiRow[];
 }
+
+export type { GeneratedReportArtifact, GeneratedReportDocument, WorkspaceReportSourceSnapshot } from './reportDocument';
+export { hasReportDocument } from './reportDocument';
 
 // Re-export app state types for convenience
 export type {
@@ -75,7 +98,7 @@ export type {
   AnalystId,
   AnalysisStatus as AppAnalysisStatus,
   ReportTypeId,
-  GeneratedReports,
+  GeneratedReportByType,
   ReportingEngineState,
   AppState,
 } from './app';

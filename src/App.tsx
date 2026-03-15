@@ -1,8 +1,16 @@
 import React, { useCallback, useEffect, useReducer } from 'react';
 import type { Company, ScreenId, AppAnalysisStatus, ReportTypeId } from './types';
 import { appReducer, getInitialAppState, getPreviousScreen, hasAnyReportGenerated } from './state';
-import { getCompanyAnalysis, getCompanyByTickerSync, getAvailableTickers, getCompanyForDisplay } from './services';
-import { normalizeTicker, isTickerAvailable } from './utils/ticker';
+import {
+  getCompanyAnalysis,
+  getCompanyForDisplay,
+  generateOverviewReport,
+} from './services';
+import {
+  WORKSPACE_WIDGET_1_MS,
+  WORKSPACE_WIDGET_2_MS,
+  WORKSPACE_COMPLETE_MS,
+} from './constants';
 import { WorkflowStepper } from './components/layout';
 import {
   SelectCompanyScreen,
@@ -23,18 +31,15 @@ export const App: React.FC = () => {
   const runAnalysis = useCallback(() => dispatch({ type: 'RUN_ANALYSIS' }), []);
   const setAnalysisStatus = useCallback((status: AppAnalysisStatus) => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: status }), []);
   const startGenerateReport = useCallback((reportType: ReportTypeId) => dispatch({ type: 'START_GENERATE_REPORT', payload: reportType }), []);
-  const completeGenerateReport = useCallback((reportType: ReportTypeId) => dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: reportType }), []);
+  const generateReportFailed = useCallback((reportType: ReportTypeId, message: string) => {
+    dispatch({ type: 'GENERATE_REPORT_FAILED', payload: { reportType, message } });
+  }, []);
   const openReportViewer = useCallback((reportType: ReportTypeId) => dispatch({ type: 'OPEN_REPORT_VIEWER', payload: reportType }), []);
   const selectReportToView = useCallback((reportType: ReportTypeId) => dispatch({ type: 'SELECT_REPORT_TO_VIEW', payload: reportType }), []);
 
-  const availableTickers = getAvailableTickers();
   const effectiveCompany = state.selectedCompany ?? getCompanyForDisplay(state.tickerInput);
   const canGoBack = getPreviousScreen(state.screen) !== null;
 
-  const normalizedInputTicker = normalizeTicker(state.tickerInput);
-  const tickerAvailable = isTickerAvailable(state.tickerInput, availableTickers);
-  const tickerUnavailable = normalizedInputTicker.length > 0 && !tickerAvailable;
-  const previewCompany = tickerAvailable ? getCompanyByTickerSync(state.tickerInput) : null;
   const analysis = state.analysisData?.analysis ?? null;
 
   const screensNeedingAnalysis: ScreenId[] = ['workspace', 'reporting-engine', 'report-viewer'];
@@ -48,29 +53,77 @@ export const App: React.FC = () => {
     const ticker = state.selectedCompany.ticker;
     getCompanyAnalysis(ticker)
       .then((data) => dispatch({ type: 'SET_ANALYSIS_DATA', payload: data }))
-      .catch(() => { /* TODO: surface error in UI */ });
+      .catch(() => {
+        dispatch({
+          type: 'SET_ANALYSIS_LOAD_ERROR',
+          payload: 'Could not load analysis for this company. Check your connection and try again.',
+        });
+      });
   }, [state.screen, state.selectedCompany?.ticker, state.analysisData, needsAnalysisData, hasStaleOrNoAnalysis]);
 
   // Advance workspace widget status only after analysis data has loaded (ensures KPI table has data).
   // Deps intentionally exclude analysisStatus so we don't re-run when status advances (which would cleanup and cancel t2/t3).
-  const WIDGET_1_DELAY_MS = 1200;
-  const WIDGET_2_DELAY_MS = 2400;
-  const COMPLETE_DELAY_MS = 3000;
   useEffect(() => {
     if (
       state.screen !== 'workspace' ||
       state.analysisStatus !== 'running' ||
       !state.analysisData
     ) return;
-    const t1 = setTimeout(() => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'widget_1_complete' }), WIDGET_1_DELAY_MS);
-    const t2 = setTimeout(() => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'widget_2_complete' }), WIDGET_2_DELAY_MS);
-    const t3 = setTimeout(() => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'complete' }), COMPLETE_DELAY_MS);
+    const t1 = setTimeout(
+      () => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'widget_1_complete' }),
+      WORKSPACE_WIDGET_1_MS
+    );
+    const t2 = setTimeout(
+      () => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'widget_2_complete' }),
+      WORKSPACE_WIDGET_2_MS
+    );
+    const t3 = setTimeout(
+      () => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'complete' }),
+      WORKSPACE_COMPLETE_MS
+    );
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
     };
   }, [state.screen, state.analysisData]);
+
+  // Overview report generation: call report service once engine enters generating state; no duplicate timers.
+  useEffect(() => {
+    if (
+      state.reportingEngineState !== 'generating' ||
+      state.generatingReportType !== 'overview' ||
+      !state.selectedCompany ||
+      !analysis
+    ) {
+      return;
+    }
+    let cancelled = false;
+    const ticker = state.selectedCompany.ticker;
+    generateOverviewReport({ ticker, company: state.selectedCompany, analysis })
+      .then((artifact) => {
+        if (!cancelled) {
+          dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: { reportType: 'overview', artifact } });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          generateReportFailed(
+            'overview',
+            'Report generation failed. Please try again or go back to the workspace.'
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    state.reportingEngineState,
+    state.generatingReportType,
+    state.selectedCompany?.ticker,
+    analysis,
+    generateReportFailed,
+  ]);
 
   return (
     <div className="app-root">
@@ -102,17 +155,13 @@ export const App: React.FC = () => {
           <WorkflowStepper
             currentScreen={state.screen}
             maxStepReached={state.maxStepReached}
-            hasAnyReportGenerated={hasAnyReportGenerated(state.generatedReports)}
+            hasAnyReportGenerated={hasAnyReportGenerated(state.generatedReportByType)}
             onStepClick={goToScreen}
           />
           {state.screen === 'select-company' && (
             <SelectCompanyScreen
               tickerInput={state.tickerInput}
               onTickerChange={setTickerInput}
-              previewCompany={previewCompany}
-              tickerUnavailable={tickerUnavailable}
-              normalizedTicker={normalizedInputTicker}
-              availableTickers={availableTickers}
               onCompanySelect={selectCompany}
             />
           )}
@@ -127,26 +176,27 @@ export const App: React.FC = () => {
               company={effectiveCompany}
               analysis={analysis}
               analysisStatus={state.analysisStatus}
+              analysisLoadError={state.analysisLoadError}
               onAnalysisStatusChange={setAnalysisStatus}
+              onRetryAnalysis={runAnalysis}
               onOpenReportingEngine={() => goToScreen('reporting-engine')}
             />
           )}
           {state.screen === 'reporting-engine' && (
             <ReportingEngineScreen
               company={effectiveCompany}
-              generatedReports={state.generatedReports}
+              generatedReportByType={state.generatedReportByType}
               reportingEngineState={state.reportingEngineState}
               generatingReportType={state.generatingReportType}
+              reportGenerationError={state.reportGenerationError}
               onStartGenerateReport={startGenerateReport}
-              onCompleteGenerateReport={completeGenerateReport}
               onOpenReportViewer={openReportViewer}
             />
           )}
           {state.screen === 'report-viewer' && (
             <ReportViewerScreen
               company={effectiveCompany}
-              analysis={analysis}
-              generatedReports={state.generatedReports}
+              generatedReportByType={state.generatedReportByType}
               activeReportType={state.activeReportType}
               onSelectReport={selectReportToView}
             />

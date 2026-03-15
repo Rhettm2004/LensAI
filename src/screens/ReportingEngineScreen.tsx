@@ -1,34 +1,29 @@
 import React from 'react';
 import type { Company } from '../types';
-import type { GeneratedReports, ReportTypeId, ReportingEngineState } from '../types';
+import type { GeneratedReportByType, ReportTypeId, ReportingEngineState } from '../types';
+import { ErrorCallout } from '../components/feedback';
 import { getReportTypeLabel, REPORT_TYPE_CONFIG } from '../state';
 
 export type ReportingEngineScreenProps = {
   company: Company;
-  generatedReports: GeneratedReports;
+  generatedReportByType: GeneratedReportByType;
   reportingEngineState: ReportingEngineState;
   generatingReportType: ReportTypeId | null;
+  reportGenerationError: string | null;
   onStartGenerateReport: (reportType: ReportTypeId) => void;
-  onCompleteGenerateReport: (reportType: ReportTypeId) => void;
   onOpenReportViewer: (reportType: ReportTypeId) => void;
 };
 
 export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
   company,
-  generatedReports,
+  generatedReportByType,
   reportingEngineState,
   generatingReportType,
+  reportGenerationError,
   onStartGenerateReport,
-  onCompleteGenerateReport,
   onOpenReportViewer,
 }) => {
   const reportTypeBeingGenerated = generatingReportType ?? 'overview';
-
-  React.useEffect(() => {
-    if (reportingEngineState !== 'generating' || !generatingReportType) return;
-    const t = setTimeout(() => onCompleteGenerateReport(generatingReportType), 1400);
-    return () => clearTimeout(t);
-  }, [reportingEngineState, generatingReportType, onCompleteGenerateReport]);
 
   return (
     <div>
@@ -46,10 +41,18 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
         <strong>{company.name}</strong> ({company.ticker}) · {company.exchange} · {company.marketCap}
       </div>
 
+      {reportingEngineState === 'engine' && reportGenerationError && (
+        <ErrorCallout
+          message={reportGenerationError}
+          actionLabel="Try again"
+          onAction={() => onStartGenerateReport('overview')}
+        />
+      )}
+
       {reportingEngineState === 'engine' && (
         <div className="screen-grid" style={{ marginBottom: 20 }}>
           {REPORT_TYPE_CONFIG.map((config) => {
-            const isGenerated = generatedReports[config.id];
+            const isGenerated = generatedReportByType[config.id] != null;
             const isAvailable = config.availableInV0;
             const isMuted = !isAvailable;
 
@@ -66,13 +69,25 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
                 <div style={{ marginTop: 12, display: 'flex', justifyContent: isMuted ? 'flex-end' : 'flex-start' }}>
                   {isAvailable ? (
                     isGenerated ? (
-                      <button
-                        type="button"
-                        className="button-primary"
-                        onClick={() => onOpenReportViewer(config.id)}
-                      >
-                        View
-                      </button>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          className="button-primary"
+                          onClick={() => onOpenReportViewer(config.id)}
+                        >
+                          View
+                        </button>
+                        {config.id === 'overview' && (
+                          <button
+                            type="button"
+                            className="button-ghost"
+                            style={{ fontSize: 12 }}
+                            onClick={() => onStartGenerateReport(config.id)}
+                          >
+                            Regenerate
+                          </button>
+                        )}
+                      </div>
                     ) : (
                       <button
                         type="button"

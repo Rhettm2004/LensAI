@@ -64,226 +64,141 @@ function buildKpiRows(rows: Array<{ metric: string; periodValues: Record<string,
   }));
 }
 
+const KPI_SNAPSHOT_CAPTION =
+  'The table below summarises simplified historical KPIs reconstructed for illustration. Values are placeholders designed to demonstrate LensAI\'s structured output format rather than formal financial guidance.';
+
 const MOCK_ANALYSIS: Record<string, Omit<CompanyAnalysisResponse['analysis'], 'analysisStatus'>> = {
   MU: {
     companySummary:
       'Micron Technology, Inc. is a leading semiconductors company within the technology sector, listed on the NASDAQ. The business generates revenue primarily through memory and storage solutions (DRAM, NAND) sold to data centre, mobile, and automotive customers. LensAI\'s V0 analysis focuses on reconstructing a simplified but coherent view of the company\'s economic engine and market positioning.',
+    investmentThesis:
+      'The core investment case for Micron Technology, Inc. is anchored in durable competitive advantages in memory technology, a resilient balance sheet through the cycle, and an ability to compound free cash flow over time. Near-term earnings may remain sensitive to macro conditions and memory cyclicality, but the company\'s strategic position, scale, and product depth provide a platform for continued value creation. We see the risk / reward profile as balanced around execution on product roadmap, capital allocation discipline, and maintaining pricing power in key segments.',
     businessModelOverview:
       'Micron operates a diversified business model anchored in memory and storage semiconductors. Revenue is driven by DRAM and NAND flash products for servers, PCs, smartphones, and automotive, with a focus on scaling leading-edge nodes and capacity rather than purely maximising volume.',
     revenueDrivers:
       'Key revenue drivers include data centre demand, smartphone content growth, and adoption of high-bandwidth memory (HBM) for AI accelerators. Over time, mix is expected to tilt toward higher-margin datacenter and specialty memory as the franchise matures.',
     industryPositioning:
       'Within the broader technology landscape, Micron is positioned as one of three major DRAM producers globally, with meaningful share in NAND. Competitive advantages are driven by process technology, capex discipline, and the ability to invest through cycles, supporting a defensible long-term return profile.',
+    keyPositives: [
+      'Scaled, globally recognised franchise in a structurally attractive memory market.',
+      'Strong historical revenue and EBITDA trajectory with improving cash generation through cycles.',
+      'Robust balance sheet flexibility to fund R&D, capex, and shareholder returns.',
+      'Differentiated technology stack (HBM, advanced nodes) supporting switching costs.',
+    ].join('\n'),
+    keyNegatives: [
+      'Exposure to macro and memory cycles can drive earnings volatility.',
+      'Competitive intensity from Samsung and SK Hynix in core profit pools.',
+      'Ongoing capex and R&D requirements to sustain technology leadership.',
+      'Regulatory, geopolitical, and supply chain risks across key regions.',
+    ].join('\n'),
+    creditAndEsg:
+      'Credit quality is assumed to be investment grade, underpinned by scale, cash flow visibility, and access to diversified funding markets. From an ESG perspective, the company\'s profile reflects both the opportunities and responsibilities associated with operating a large, global technology and manufacturing platform, including energy use, water, workforce practices, and supply chain standards.',
+    kpiSnapshotCaption: KPI_SNAPSHOT_CAPTION,
     kpiRows: buildKpiRows([
       { metric: 'Revenue', periodValues: { FY21: '$27.7B', FY22: '$30.8B', FY23: '$15.5B', FY24: '$22.4B' }, trend: 'up' },
       { metric: 'EBITDA', periodValues: { FY21: '$10.2B', FY22: '$12.1B', FY23: '-$1.2B', FY24: '$5.8B' }, trend: 'up' },
       { metric: 'Free Cash Flow', periodValues: { FY21: '$5.2B', FY22: '$6.2B', FY23: '-$2.1B', FY24: '$2.1B' }, trend: 'up' },
     ]),
-    reportSections: [
-      {
-        title: 'Company Summary',
-        content:
-          'Micron Technology, Inc. is a leading semiconductors company within the technology sector, listed on the NASDAQ. The business generates revenue primarily through memory and storage solutions (DRAM, NAND) sold to data centre, mobile, and automotive customers. LensAI\'s V0 analysis focuses on reconstructing a simplified but coherent view of the company\'s economic engine and market positioning.',
-      },
-      {
-        title: 'Investment Thesis',
-        content:
-          'The core investment case for Micron Technology, Inc. is anchored in durable competitive advantages in memory technology, a resilient balance sheet through the cycle, and an ability to compound free cash flow over time. Near-term earnings may remain sensitive to macro conditions and memory cyclicality, but the company\'s strategic position, scale, and product depth provide a platform for continued value creation. We see the risk / reward profile as balanced around execution on product roadmap, capital allocation discipline, and maintaining pricing power in key segments.',
-      },
-      {
-        title: 'Key Positives',
-        content: [
-          'Scaled, globally recognised franchise in a structurally attractive memory market.',
-          'Strong historical revenue and EBITDA trajectory with improving cash generation through cycles.',
-          'Robust balance sheet flexibility to fund R&D, capex, and shareholder returns.',
-          'Differentiated technology stack (HBM, advanced nodes) supporting switching costs.',
-        ].join('\n'),
-      },
-      {
-        title: 'Key Negatives',
-        content: [
-          'Exposure to macro and memory cycles can drive earnings volatility.',
-          'Competitive intensity from Samsung and SK Hynix in core profit pools.',
-          'Ongoing capex and R&D requirements to sustain technology leadership.',
-          'Regulatory, geopolitical, and supply chain risks across key regions.',
-        ].join('\n'),
-      },
-      {
-        title: 'Financials (KPI Snapshot)',
-        content:
-          'The table below summarises simplified historical KPIs reconstructed for illustration. Values are placeholders designed to demonstrate LensAI\'s structured output format rather than formal financial guidance.',
-      },
-      {
-        title: 'Credit & ESG',
-        content:
-          'Credit quality is assumed to be investment grade, underpinned by scale, cash flow visibility, and access to diversified funding markets. From an ESG perspective, the company\'s profile reflects both the opportunities and responsibilities associated with operating a large, global technology and manufacturing platform, including energy use, water, workforce practices, and supply chain standards.',
-      },
-    ],
+    reportSections: [],
   },
   AAPL: {
     companySummary:
       'Apple Inc. is a leading consumer electronics company within the technology sector, listed on the NASDAQ. The business generates revenue primarily through a scaled, globally distributed franchise with a mix of hardware (iPhone, Mac, iPad), software, and services. LensAI\'s V0 analysis focuses on reconstructing a simplified but coherent view of the company\'s economic engine and market positioning.',
+    investmentThesis:
+      'The core investment case for Apple Inc. is anchored in durable competitive advantages, a resilient balance sheet, and an ability to compound free cash flow over time. Near-term earnings may remain sensitive to macro conditions and product cycle timing, but the company\'s strategic position, scale, and product depth provide a platform for continued value creation. We see the risk / reward profile as balanced around execution on product roadmap, capital allocation discipline, and maintaining pricing power in key segments.',
     businessModelOverview:
       'Apple operates a diversified business model anchored in high-value hardware, software, and services. Revenue is driven by a mix of core platform offerings (iPhone, Mac, iPad), adjacent product lines (Wearables, Home), and recurring software and services, with a focus on scaling unit economics and ecosystem lock-in rather than purely maximising volume.',
     revenueDrivers:
       'Key revenue drivers include installed base growth, product refresh cycles, and monetisation of value-added services (App Store, iCloud, Apple Music, etc.) layered on top of core hardware. Over time, mix is expected to tilt toward higher-margin, recurring streams as the franchise matures.',
     industryPositioning:
       'Within the broader technology landscape, Apple is positioned as a scaled leader in consumer electronics and ecosystem software with meaningful share in its target categories. Competitive advantages are driven by ecosystem depth, brand, and the ability to invest through cycles, supporting a defensible long-term return profile.',
+    keyPositives: [
+      'Scaled, globally recognised franchise in a structurally attractive market.',
+      'Strong historical revenue and EBITDA trajectory with improving cash generation.',
+      'Robust balance sheet flexibility to fund R&D, capex, and shareholder returns.',
+      'Differentiated technology stack and product ecosystem supporting switching costs.',
+    ].join('\n'),
+    keyNegatives: [
+      'Exposure to macro and industry cycles can drive earnings volatility.',
+      'Competitive intensity from peers and new entrants in core profit pools.',
+      'Ongoing capex and R&D requirements to sustain technology leadership.',
+      'Regulatory, geopolitical, and supply chain risks across key regions.',
+    ].join('\n'),
+    creditAndEsg:
+      'Credit quality is assumed to be investment grade, underpinned by scale, cash flow visibility, and access to diversified funding markets. From an ESG perspective, the company\'s profile reflects both the opportunities and responsibilities associated with operating a large, global technology platform, including data privacy, workforce practices, and environmental footprint across the supply chain.',
+    kpiSnapshotCaption: KPI_SNAPSHOT_CAPTION,
     kpiRows: buildKpiRows([
       { metric: 'Revenue', periodValues: { FY21: '$365.8B', FY22: '$394.3B', FY23: '$383.3B', FY24: '$391.0B' }, trend: 'up' },
       { metric: 'EBITDA', periodValues: { FY21: '$120.3B', FY22: '$129.9B', FY23: '$125.8B', FY24: '$130.5B' }, trend: 'neutral' },
       { metric: 'Free Cash Flow', periodValues: { FY21: '$92.6B', FY22: '$111.4B', FY23: '$99.6B', FY24: '$108.2B' }, trend: 'up' },
     ]),
-    reportSections: [
-      {
-        title: 'Company Summary',
-        content:
-          'Apple Inc. is a leading consumer electronics company within the technology sector, listed on the NASDAQ. The business generates revenue primarily through a scaled, globally distributed franchise with a mix of hardware (iPhone, Mac, iPad), software, and services. LensAI\'s V0 analysis focuses on reconstructing a simplified but coherent view of the company\'s economic engine and market positioning.',
-      },
-      {
-        title: 'Investment Thesis',
-        content:
-          'The core investment case for Apple Inc. is anchored in durable competitive advantages, a resilient balance sheet, and an ability to compound free cash flow over time. Near-term earnings may remain sensitive to macro conditions and product cycle timing, but the company\'s strategic position, scale, and product depth provide a platform for continued value creation. We see the risk / reward profile as balanced around execution on product roadmap, capital allocation discipline, and maintaining pricing power in key segments.',
-      },
-      {
-        title: 'Key Positives',
-        content: [
-          'Scaled, globally recognised franchise in a structurally attractive market.',
-          'Strong historical revenue and EBITDA trajectory with improving cash generation.',
-          'Robust balance sheet flexibility to fund R&D, capex, and shareholder returns.',
-          'Differentiated technology stack and product ecosystem supporting switching costs.',
-        ].join('\n'),
-      },
-      {
-        title: 'Key Negatives',
-        content: [
-          'Exposure to macro and industry cycles can drive earnings volatility.',
-          'Competitive intensity from peers and new entrants in core profit pools.',
-          'Ongoing capex and R&D requirements to sustain technology leadership.',
-          'Regulatory, geopolitical, and supply chain risks across key regions.',
-        ].join('\n'),
-      },
-      {
-        title: 'Financials (KPI Snapshot)',
-        content:
-          'The table below summarises simplified historical KPIs reconstructed for illustration. Values are placeholders designed to demonstrate LensAI\'s structured output format rather than formal financial guidance.',
-      },
-      {
-        title: 'Credit & ESG',
-        content:
-          'Credit quality is assumed to be investment grade, underpinned by scale, cash flow visibility, and access to diversified funding markets. From an ESG perspective, the company\'s profile reflects both the opportunities and responsibilities associated with operating a large, global technology platform, including data privacy, workforce practices, and environmental footprint across the supply chain.',
-      },
-    ],
+    reportSections: [],
   },
   MSFT: {
     companySummary:
       'Microsoft Corporation is a leading software and cloud company within the technology sector, listed on the NASDAQ. The business generates revenue primarily through cloud (Azure), productivity (Office 365, Teams), and personal computing (Windows, Xbox, Surface). LensAI\'s V0 analysis focuses on reconstructing a simplified but coherent view of the company\'s economic engine and market positioning.',
+    investmentThesis:
+      'The core investment case for Microsoft Corporation is anchored in durable competitive advantages in enterprise software and cloud, a resilient balance sheet, and an ability to compound free cash flow over time. Near-term earnings may remain sensitive to macro and cloud spend cycles, but the company\'s strategic position, scale, and product depth provide a platform for continued value creation.',
     businessModelOverview:
       'Microsoft operates a diversified business model anchored in cloud and productivity software. Revenue is driven by Azure, Office 365, LinkedIn, Dynamics, and gaming, with a focus on recurring subscription and consumption revenue rather than one-time licence sales.',
     revenueDrivers:
       'Key revenue drivers include Azure adoption, seat growth in Office 365 and Teams, and monetisation of GitHub, LinkedIn, and security. Over time, mix is expected to tilt further toward cloud and high-margin software as the franchise matures.',
     industryPositioning:
       'Within the broader technology landscape, Microsoft is positioned as a scaled leader in enterprise software and public cloud with meaningful share in productivity and infrastructure. Competitive advantages are driven by distribution, platform effects, and the ability to invest through cycles, supporting a defensible long-term return profile.',
+    keyPositives: [
+      'Scaled, globally recognised franchise in enterprise software and public cloud.',
+      'Strong historical revenue and EBITDA trajectory with improving cash generation.',
+      'Robust balance sheet flexibility to fund R&D, capex, and shareholder returns.',
+      'Differentiated platform and ecosystem supporting switching costs.',
+    ].join('\n'),
+    keyNegatives: [
+      'Exposure to macro and cloud spend cycles can drive earnings volatility.',
+      'Competitive intensity from AWS, Google Cloud, and others in core profit pools.',
+      'Ongoing capex and R&D requirements to sustain technology leadership.',
+      'Regulatory and antitrust scrutiny across key regions.',
+    ].join('\n'),
+    creditAndEsg:
+      'Credit quality is assumed to be investment grade, underpinned by scale, cash flow visibility, and access to diversified funding markets. From an ESG perspective, the company\'s profile reflects commitments to carbon negative, water positive, and responsible AI and data practices.',
+    kpiSnapshotCaption: KPI_SNAPSHOT_CAPTION,
     kpiRows: buildKpiRows([
       { metric: 'Revenue', periodValues: { FY21: '$168.1B', FY22: '$198.3B', FY23: '$211.9B', FY24: '$245.0B' }, trend: 'up' },
       { metric: 'EBITDA', periodValues: { FY21: '$77.0B', FY22: '$91.0B', FY23: '$98.0B', FY24: '$115.0B' }, trend: 'up' },
       { metric: 'Free Cash Flow', periodValues: { FY21: '$56.7B', FY22: '$65.0B', FY23: '$74.0B', FY24: '$82.0B' }, trend: 'up' },
     ]),
-    reportSections: [
-      {
-        title: 'Company Summary',
-        content:
-          'Microsoft Corporation is a leading software and cloud company within the technology sector, listed on the NASDAQ. The business generates revenue primarily through cloud (Azure), productivity (Office 365, Teams), and personal computing (Windows, Xbox, Surface). LensAI\'s V0 analysis focuses on reconstructing a simplified but coherent view of the company\'s economic engine and market positioning.',
-      },
-      {
-        title: 'Investment Thesis',
-        content:
-          'The core investment case for Microsoft Corporation is anchored in durable competitive advantages in enterprise software and cloud, a resilient balance sheet, and an ability to compound free cash flow over time. Near-term earnings may remain sensitive to macro and cloud spend cycles, but the company\'s strategic position, scale, and product depth provide a platform for continued value creation.',
-      },
-      {
-        title: 'Key Positives',
-        content: [
-          'Scaled, globally recognised franchise in enterprise software and public cloud.',
-          'Strong historical revenue and EBITDA trajectory with improving cash generation.',
-          'Robust balance sheet flexibility to fund R&D, capex, and shareholder returns.',
-          'Differentiated platform and ecosystem supporting switching costs.',
-        ].join('\n'),
-      },
-      {
-        title: 'Key Negatives',
-        content: [
-          'Exposure to macro and cloud spend cycles can drive earnings volatility.',
-          'Competitive intensity from AWS, Google Cloud, and others in core profit pools.',
-          'Ongoing capex and R&D requirements to sustain technology leadership.',
-          'Regulatory and antitrust scrutiny across key regions.',
-        ].join('\n'),
-      },
-      {
-        title: 'Financials (KPI Snapshot)',
-        content:
-          'The table below summarises simplified historical KPIs reconstructed for illustration. Values are placeholders designed to demonstrate LensAI\'s structured output format rather than formal financial guidance.',
-      },
-      {
-        title: 'Credit & ESG',
-        content:
-          'Credit quality is assumed to be investment grade, underpinned by scale, cash flow visibility, and access to diversified funding markets. From an ESG perspective, the company\'s profile reflects commitments to carbon negative, water positive, and responsible AI and data practices.',
-      },
-    ],
+    reportSections: [],
   },
   NVDA: {
     companySummary:
       'NVIDIA Corporation is a leading semiconductors and GPU company within the technology sector, listed on the NASDAQ. The business generates revenue primarily through GPUs for AI, data centre, gaming, and professional visualisation. LensAI\'s V0 analysis focuses on reconstructing a simplified but coherent view of the company\'s economic engine and market positioning.',
+    investmentThesis:
+      'The core investment case for NVIDIA Corporation is anchored in durable competitive advantages in AI and accelerated computing, a resilient balance sheet, and an ability to compound free cash flow over time. Near-term earnings may remain sensitive to capital spend cycles and competition, but the company\'s strategic position, scale, and ecosystem provide a platform for continued value creation.',
     businessModelOverview:
       'NVIDIA operates a business model anchored in accelerated computing and AI. Revenue is driven by data centre GPUs (AI training and inference), gaming (GeForce), and professional visualisation (Quadro, Omniverse), with a focus on high-performance compute and software (CUDA, AI frameworks) rather than commodity silicon.',
     revenueDrivers:
       'Key revenue drivers include AI infrastructure build-out, gaming GPU refresh cycles, and adoption of inference at the edge. Over time, mix is expected to tilt further toward data centre and software as the franchise matures.',
     industryPositioning:
       'Within the broader technology landscape, NVIDIA is positioned as the dominant provider of GPUs for AI and high-performance computing, with meaningful share in gaming and professional graphics. Competitive advantages are driven by CUDA ecosystem, architecture leadership, and the ability to invest through cycles, supporting a defensible long-term return profile.',
+    keyPositives: [
+      'Dominant position in AI and data centre GPUs with strong ecosystem lock-in.',
+      'Strong historical revenue and EBITDA trajectory with improving cash generation.',
+      'Robust balance sheet flexibility to fund R&D, capex, and shareholder returns.',
+      'Differentiated CUDA and software stack supporting switching costs.',
+    ].join('\n'),
+    keyNegatives: [
+      'Exposure to AI capex and product cycles can drive earnings volatility.',
+      'Competitive intensity from AMD, Intel, and custom silicon in core profit pools.',
+      'Ongoing capex and R&D requirements to sustain technology leadership.',
+      'Regulatory and export controls affecting key regions.',
+    ].join('\n'),
+    creditAndEsg:
+      'Credit quality is assumed to be investment grade, underpinned by scale, cash flow visibility, and access to diversified funding markets. From an ESG perspective, the company\'s profile reflects energy efficiency of AI infrastructure, supply chain standards, and workforce practices.',
+    kpiSnapshotCaption: KPI_SNAPSHOT_CAPTION,
     kpiRows: buildKpiRows([
       { metric: 'Revenue', periodValues: { FY21: '$16.7B', FY22: '$26.9B', FY23: '$27.0B', FY24: '$60.9B' }, trend: 'up' },
       { metric: 'EBITDA', periodValues: { FY21: '$6.7B', FY22: '$12.5B', FY23: '$10.2B', FY24: '$42.0B' }, trend: 'up' },
       { metric: 'Free Cash Flow', periodValues: { FY21: '$5.3B', FY22: '$7.3B', FY23: '$5.8B', FY24: '$28.6B' }, trend: 'up' },
     ]),
-    reportSections: [
-      {
-        title: 'Company Summary',
-        content:
-          'NVIDIA Corporation is a leading semiconductors and GPU company within the technology sector, listed on the NASDAQ. The business generates revenue primarily through GPUs for AI, data centre, gaming, and professional visualisation. LensAI\'s V0 analysis focuses on reconstructing a simplified but coherent view of the company\'s economic engine and market positioning.',
-      },
-      {
-        title: 'Investment Thesis',
-        content:
-          'The core investment case for NVIDIA Corporation is anchored in durable competitive advantages in AI and accelerated computing, a resilient balance sheet, and an ability to compound free cash flow over time. Near-term earnings may remain sensitive to capital spend cycles and competition, but the company\'s strategic position, scale, and ecosystem provide a platform for continued value creation.',
-      },
-      {
-        title: 'Key Positives',
-        content: [
-          'Dominant position in AI and data centre GPUs with strong ecosystem lock-in.',
-          'Strong historical revenue and EBITDA trajectory with improving cash generation.',
-          'Robust balance sheet flexibility to fund R&D, capex, and shareholder returns.',
-          'Differentiated CUDA and software stack supporting switching costs.',
-        ].join('\n'),
-      },
-      {
-        title: 'Key Negatives',
-        content: [
-          'Exposure to AI capex and product cycles can drive earnings volatility.',
-          'Competitive intensity from AMD, Intel, and custom silicon in core profit pools.',
-          'Ongoing capex and R&D requirements to sustain technology leadership.',
-          'Regulatory and export controls affecting key regions.',
-        ].join('\n'),
-      },
-      {
-        title: 'Financials (KPI Snapshot)',
-        content:
-          'The table below summarises simplified historical KPIs reconstructed for illustration. Values are placeholders designed to demonstrate LensAI\'s structured output format rather than formal financial guidance.',
-      },
-      {
-        title: 'Credit & ESG',
-        content:
-          'Credit quality is assumed to be investment grade, underpinned by scale, cash flow visibility, and access to diversified funding markets. From an ESG perspective, the company\'s profile reflects energy efficiency of AI infrastructure, supply chain standards, and workforce practices.',
-      },
-    ],
+    reportSections: [],
   },
 };
 
@@ -291,7 +206,11 @@ const MOCK_ANALYSIS: Record<string, Omit<CompanyAnalysisResponse['analysis'], 'a
 // Default company (single source of truth for fallback / unknown ticker)
 // ---------------------------------------------------------------------------
 
-/** Default ticker when none selected or when requested ticker is not in mock data. */
+/**
+ * Fallback ticker when requested ticker has no mock company/analysis entry.
+ * Used only inside mock helpers so missing keys still return a stable shape for services.
+ * Prefer explicit selection in UI—do not rely on this as a product default.
+ */
 export const DEFAULT_TICKER = 'MU';
 
 /** Get mock company by ticker; returns default if not found. */

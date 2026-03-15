@@ -4,6 +4,7 @@
 
 import type { Company } from '../types';
 import type { CompanyAnalysisResponse } from '../types';
+import type { GeneratedReportArtifact } from '../types/reportDocument';
 import type {
   AppState,
   ScreenId,
@@ -11,7 +12,11 @@ import type {
   AnalysisStatus,
   ReportTypeId,
 } from '../types/app';
-import { SCREEN_ORDER, INITIAL_GENERATED_REPORTS, getPreviousScreen } from './constants';
+import {
+  SCREEN_ORDER,
+  INITIAL_GENERATED_REPORT_BY_TYPE,
+  getPreviousScreen,
+} from './constants';
 
 export type AppAction =
   | { type: 'GO_TO_SCREEN'; payload: ScreenId }
@@ -21,12 +26,14 @@ export type AppAction =
   | { type: 'SELECT_ANALYST'; payload: AnalystId }
   | { type: 'RUN_ANALYSIS' }
   | { type: 'SET_ANALYSIS_DATA'; payload: CompanyAnalysisResponse }
+  | { type: 'SET_ANALYSIS_LOAD_ERROR'; payload: string }
   | { type: 'SET_ANALYSIS_STATUS'; payload: AnalysisStatus }
   | { type: 'RESET_FLOW' }
   | { type: 'CHANGE_COMPANY' }
   | { type: 'CHANGE_ANALYST' }
   | { type: 'START_GENERATE_REPORT'; payload: ReportTypeId }
-  | { type: 'COMPLETE_GENERATE_REPORT'; payload: ReportTypeId }
+  | { type: 'COMPLETE_GENERATE_REPORT'; payload: { reportType: ReportTypeId; artifact: GeneratedReportArtifact } }
+  | { type: 'GENERATE_REPORT_FAILED'; payload: { reportType: ReportTypeId; message: string } }
   | { type: 'OPEN_REPORT_VIEWER'; payload: ReportTypeId }
   | { type: 'SELECT_REPORT_TO_VIEW'; payload: ReportTypeId }
   | { type: 'BACK_TO_REPORTING_ENGINE' };
@@ -64,16 +71,21 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         screen: 'workspace',
         maxStepReached: Math.max(state.maxStepReached, 2),
+        selectedAnalystId: 'fundamental',
         analysisStatus: 'running',
         analysisData: null,
-        generatedReports: INITIAL_GENERATED_REPORTS,
+        analysisLoadError: null,
+        generatedReportByType: INITIAL_GENERATED_REPORT_BY_TYPE,
         reportingEngineState: 'engine',
         generatingReportType: null,
         activeReportType: null,
       };
 
     case 'SET_ANALYSIS_DATA':
-      return { ...state, analysisData: action.payload };
+      return { ...state, analysisData: action.payload, analysisLoadError: null };
+
+    case 'SET_ANALYSIS_LOAD_ERROR':
+      return { ...state, analysisLoadError: action.payload, analysisStatus: 'idle' };
 
     case 'SET_ANALYSIS_STATUS':
       return { ...state, analysisStatus: action.payload };
@@ -93,23 +105,41 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         screen: 'choose-analyst',
         analysisStatus: 'idle',
-        generatedReports: INITIAL_GENERATED_REPORTS,
+        generatedReportByType: INITIAL_GENERATED_REPORT_BY_TYPE,
         reportingEngineState: 'engine',
         generatingReportType: null,
         activeReportType: null,
       };
 
     case 'START_GENERATE_REPORT':
-      return { ...state, reportingEngineState: 'generating', generatingReportType: action.payload };
+      return {
+        ...state,
+        reportingEngineState: 'generating',
+        generatingReportType: action.payload,
+        reportGenerationError: null,
+      };
 
     case 'COMPLETE_GENERATE_REPORT': {
-      const next = { ...state, reportingEngineState: 'engine' as const, generatingReportType: null };
-      if (action.payload === 'overview') next.generatedReports = { ...state.generatedReports, overview: true };
-      if (action.payload === 'valuation') next.generatedReports = { ...state.generatedReports, valuation: true };
-      if (action.payload === 'industry') next.generatedReports = { ...state.generatedReports, industry: true };
-      if (action.payload === 'news') next.generatedReports = { ...state.generatedReports, news: true };
-      return next;
+      const { reportType, artifact } = action.payload;
+      return {
+        ...state,
+        reportingEngineState: 'engine',
+        generatingReportType: null,
+        reportGenerationError: null,
+        generatedReportByType: {
+          ...state.generatedReportByType,
+          [reportType]: artifact,
+        },
+      };
     }
+
+    case 'GENERATE_REPORT_FAILED':
+      return {
+        ...state,
+        reportingEngineState: 'engine',
+        generatingReportType: null,
+        reportGenerationError: action.payload.message,
+      };
 
     case 'OPEN_REPORT_VIEWER':
       return {
@@ -139,7 +169,9 @@ export function getInitialAppState(): AppState {
     selectedAnalystId: null,
     analysisStatus: 'idle',
     analysisData: null,
-    generatedReports: INITIAL_GENERATED_REPORTS,
+    analysisLoadError: null,
+    reportGenerationError: null,
+    generatedReportByType: INITIAL_GENERATED_REPORT_BY_TYPE,
     reportingEngineState: 'engine',
     generatingReportType: null,
     activeReportType: null,

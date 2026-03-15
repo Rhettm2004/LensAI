@@ -15,6 +15,14 @@ npm run dev
 
 Build: `npm run build`. Preview: `npm run preview`.
 
+### Backend (optional, mock API)
+
+```bash
+cd backend && npm install && npm run dev
+```
+
+Serves **http://localhost:3001** — `GET /companies?query=`, `GET /companies/:ticker`, `POST /analysis/run`, `POST /report/generate`. See `backend/README.md`. Frontend still uses local services; set `VITE_API_BASE_URL` and use `src/services/apiBase.ts` when wiring HTTP.
+
 ---
 
 ## What’s built
@@ -54,16 +62,16 @@ Screens and components receive data via props; no scattered duplicate state.
 - **Fallback:** Unknown/missing ticker uses `DEFAULT_TICKER` (`'MU'`) in mock layer.
 - **Structured:** KPI rows use `KpiRow[]` with `metric`, `value`, `trend`, `periodValues`. Report sections use `ReportSection[]` (`title`, `content`). Product Report and KPI Table are data-driven from `analysisData.analysis`.
 
-### Company “search”
+### Company search
 
-- User types a **ticker**; if it exactly matches a known ticker (case-insensitive), a preview card appears; clicking the card selects the company.
-- No type-ahead or partial match. `searchCompanies()` exists in `services/companyService.ts` but is **not used** by any screen.
+- User types in the search field; **Select Company** debounces input and calls **`searchCompanies(query)`** (async, mock delay). Results match **partial ticker or partial company name** (case-insensitive).
+- Suggestions render as **CompanyCard** list; click selects the company (`SELECT_COMPANY`); flow continues unchanged.
 
 ### Analysis workflow
 
 - **Run Analysis** → Reducer sets `screen: 'workspace'`, `analysisStatus: 'running'`, `analysisData: null`. App then fetches via `getCompanyAnalysis(ticker)` and dispatches `SET_ANALYSIS_DATA`.
 - **Staged loading:** After analysis data is set, timers (1.2s, 2.4s, 3s) advance status so Product Report appears first, then KPI Table, then “complete”. CTA “Open Reporting Engine” is disabled until `analysisStatus === 'complete'`.
-- **Report “generation”:** Clicking Generate sets a 1.4s timer then flips `generatedReports.overview`. **No call to `reportService.generateOverviewReport()`**; Report Viewer reads the same `analysisData.analysis` already in state. So generation is simulated (flag only).
+- **Report generation (overview):** Clicking Generate sets `reportingEngineState` to generating; **App** calls `generateOverviewReport({ ticker, analysis })` (service still uses a mock delay). On resolve, reducer stores `overviewReport` and sets `generatedReports.overview`. Report Viewer reads **`state.overviewReport`** (sections + kpiRows snapshot), not raw analysis.
 
 ### Architecture
 
@@ -83,28 +91,28 @@ src/
 
 - **Separation:** Screens are thin; state in reducer; data behind services; mock isolated; types centralized.
 - **Services:** All data access goes through `services/`. Mock is only imported there; UI never imports mock. Service APIs are async and documented for future backend swap (e.g. `GET /companies/search`, `POST /analysis/run`).
-- **Report service:** `generateOverviewReport()` is implemented but not called in the app; Reporting Engine uses a timer only.
+- **Report service:** `generateOverviewReport()` is called from `App.tsx` when the Reporting Engine enters generating state for overview; result is stored in `overviewReport`.
 
 ---
 
 ## Known gaps
 
 - **No URL routing** — No shareable links or browser back/forward; refresh loses position.
-- **Exact-ticker only** — No partial match or type-ahead; `searchCompanies` is unused.
-- **Report generation is simulated** — Timer only; `reportService` is not wired in.
+- ~~**Exact-ticker only**~~ — Replaced by `searchCompanies`-backed search (still mock dataset only).
+- **Report generation** — Overview is wired through `reportService` and `overviewReport` state; service still simulates delay only (no backend).
 - **Selected analyst unused** — `selectedAnalystId` exists in state but no UI sets it (only one analyst).
 - **Non-overview reports** — Valuation/industry/news show “not yet available” placeholder.
 - **Default ticker MU** — Fallback for unknown ticker is Micron (in mock).
-- **No error UI** — Failed `getCompanyAnalysis` is caught with a no-op.
-- **Duplicate timing constants** — Widget delays in both App and WorkspaceScreen; report delay in both reportService and ReportingEngineScreen.
+- **Error UI** — `ErrorCallout` surfaces analysis load failure (workspace, Retry) and report generation failure (reporting engine, Try again). Messages are fixed strings until backend returns codes.
+- **Timing constants** — Single source in `src/constants/timing.ts` for workspace staged delays and report mock delay (`reportService` imports same value).
 
 ---
 
 ## Recommended next steps
 
-1. **Wire report generation** — Call `generateOverviewReport({ ticker, analysis })` when user clicks Generate (overview); store result and have Report Viewer read it so the report service is used end-to-end.
+1. ~~**Wire report generation**~~ — Done: overview uses `generateOverviewReport` and `overviewReport` in state; next step is real backend/job polling.
 2. **Optional:** Add URL routing (e.g. hash or path for screen + ticker) for shareable state and refresh.
-3. **Optional:** Use `searchCompanies()` in Select Company for type-ahead (e.g. dropdown or list) instead of exact-ticker-only input.
+3. ~~**Optional: searchCompanies in Select Company**~~ — Done. Next: backend `GET /companies/search` and ranking/pagination.
 
 ---
 

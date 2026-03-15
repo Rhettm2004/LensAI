@@ -1,30 +1,53 @@
 /**
- * Report generation service.
- * Currently builds from in-memory analysis; replace with backend generation when ready.
- *
- * Future: POST /reports/generate → jobId, then GET /reports/:reportId
+ * Report generation: one branded PDF from Workspace analysis only.
+ * Future: POST /reports/generate returns same artifact (PDF bytes + metadata).
  */
 
-import type { AnalysisOutput, OverviewReportResult, ReportSection } from '../types';
+import { REPORT_GENERATION_MOCK_MS } from '../constants/timing';
+import type { AnalysisOutput, Company } from '../types';
+import type { GeneratedReportArtifact } from '../types/reportDocument';
+import { getReportTypeLabel } from '../state/constants';
+import { getNarrativeBlocks } from '../utils/analysisNarrative';
+import { buildBrandedPdfFromWorkspace } from './reportPdfFromWorkspace';
 
 export interface GenerateOverviewReportInput {
-  /** Company ticker (for future API). */
   ticker: string;
-  /** Analysis output to compile into overview report. */
+  company: Company;
+  /** Workspace output — PDF built only from narrative fields + kpiRows (+ optional caption). */
   analysis: AnalysisOutput;
 }
 
-/** Simulated generation delay (ms). */
-const MOCK_DELAY_MS = 1400;
-
 /**
- * Generate overview report from analysis output.
- * In production this would call the backend to compile/generate the report.
+ * Generate overview artifact: PDF built strictly from analysis (workspace) data.
  */
 export async function generateOverviewReport(
   input: GenerateOverviewReportInput
-): Promise<OverviewReportResult> {
-  await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-  const sections: ReportSection[] = input.analysis.reportSections ?? [];
-  return { reportType: 'overview', sections };
+): Promise<GeneratedReportArtifact> {
+  await new Promise((resolve) => setTimeout(resolve, REPORT_GENERATION_MOCK_MS));
+
+  const narrativeBlocks = getNarrativeBlocks(input.analysis);
+  const kpiRows = input.analysis.kpiRows ?? [];
+  const generatedAt = new Date().toISOString();
+  const title = getReportTypeLabel('overview');
+
+  const pdfBytes = await buildBrandedPdfFromWorkspace({
+    analysis: input.analysis,
+    company: input.company,
+    reportTypeId: 'overview',
+    title,
+    generatedAtIso: generatedAt,
+  });
+
+  return {
+    reportTypeId: 'overview',
+    title,
+    company: input.company,
+    generatedAt,
+    workspaceSource: {
+      narrativeBlockTitles: narrativeBlocks.map((b) => b.title),
+      kpiRowCount: kpiRows.length,
+      hasKpiCaption: Boolean(input.analysis.kpiSnapshotCaption?.trim()),
+    },
+    pdfBytes,
+  };
 }

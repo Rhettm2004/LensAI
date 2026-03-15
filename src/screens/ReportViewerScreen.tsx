@@ -1,43 +1,60 @@
-import React from 'react';
-import type { Company, AnalysisOutput, GeneratedReports, ReportTypeId } from '../types';
+import React, { useEffect, useState } from 'react';
+import type { Company, GeneratedReportByType, ReportTypeId } from '../types';
+import type { GeneratedReportArtifact } from '../types/reportDocument';
 import { getReportTypeLabel } from '../state';
-import { KpiTable } from '../components/widgets';
-
-const LIST_SECTION_TITLES = ['Key Positives', 'Key Negatives'];
-const KPI_SECTION_TITLE = 'Financials (KPI Snapshot)';
+import { downloadReportPdfArtifact } from '../services/reportPdfExport';
 
 export type ReportViewerScreenProps = {
   company: Company;
-  analysis: AnalysisOutput | null;
-  generatedReports: GeneratedReports;
+  generatedReportByType: GeneratedReportByType;
   activeReportType: ReportTypeId | null;
   onSelectReport: (reportType: ReportTypeId) => void;
 };
 
 export const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
   company,
-  analysis,
-  generatedReports,
+  generatedReportByType,
   activeReportType,
   onSelectReport,
 }) => {
   const generatedList = (['overview', 'valuation', 'industry', 'news'] as const).filter(
-    (id) => generatedReports[id]
+    (id) => generatedReportByType[id] != null && generatedReportByType[id]!.pdfBytes.length > 0
   );
   const effectiveReportType =
-    activeReportType && generatedReports[activeReportType]
+    activeReportType && generatedReportByType[activeReportType] != null
       ? activeReportType
       : generatedList[0] ?? null;
 
-  React.useEffect(() => {
+  const activeArtifact: GeneratedReportArtifact | null =
+    effectiveReportType ? generatedReportByType[effectiveReportType] : null;
+
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
+  useEffect(() => {
     if (generatedList.length > 0 && !activeReportType) {
       onSelectReport(generatedList[0]);
     }
   }, [generatedList.length, activeReportType, onSelectReport]);
 
+  // Single artifact: embed same blob the download uses
+  useEffect(() => {
+    if (!activeArtifact) {
+      setPdfUrl(null);
+      return;
+    }
+    const blob = new Blob([new Uint8Array(activeArtifact.pdfBytes)], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    setPdfUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [activeArtifact]);
+
   const reportTitle = effectiveReportType ? getReportTypeLabel(effectiveReportType) : 'Report';
-  const reportSections = analysis?.reportSections ?? [];
-  const kpiRows = analysis?.kpiRows ?? [];
+
+  const handleDownloadPdf = () => {
+    if (activeArtifact) downloadReportPdfArtifact(activeArtifact);
+  };
 
   return (
     <div>
@@ -45,7 +62,7 @@ export const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
         <div className="app-section-eyebrow">Step 5 · Report Viewer</div>
         <div className="app-section-title">Report Viewer</div>
         <div className="app-section-subtitle">
-          Open and view generated reports below. Select a report to view its content.
+          View the generated report PDF below. The same file is used for download—no separate layout.
         </div>
       </div>
 
@@ -58,7 +75,7 @@ export const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
             Generated reports
           </div>
-          <div className="tabs" style={{ flexWrap: 'wrap', gap: 6 }}>
+          <div className="tabs" style={{ flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
             {generatedList.map((id) => (
               <button
                 key={id}
@@ -69,7 +86,24 @@ export const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
                 {getReportTypeLabel(id)}
               </button>
             ))}
+            {activeArtifact && (
+              <button
+                type="button"
+                className="button-ghost"
+                style={{ fontSize: 12, marginLeft: 8 }}
+                onClick={handleDownloadPdf}
+              >
+                Download PDF
+              </button>
+            )}
           </div>
+        </div>
+      )}
+
+      {activeArtifact && (
+        <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 10 }}>
+          Generated {new Date(activeArtifact.generatedAt).toLocaleString()} · {activeArtifact.title} · sourced from
+          Workspace outputs only
         </div>
       )}
 
@@ -81,52 +115,29 @@ export const ReportViewerScreen: React.FC<ReportViewerScreenProps> = ({
         </div>
       )}
 
-      {effectiveReportType === 'overview' && reportSections.length > 0 && (
-        <div className="report-layout">
-          <div>
-            {reportSections
-              .filter((s) => s.title !== KPI_SECTION_TITLE && s.title !== 'Credit & ESG')
-              .map((section) => (
-                <div key={section.title} className="report-section" style={{ marginTop: 10 }}>
-                  <div className="report-section-title">{section.title}</div>
-                  <div className="report-body">
-                    {LIST_SECTION_TITLES.includes(section.title) && section.content.includes('\n') ? (
-                      <ul className="bullet-list">
-                        {section.content.split('\n').filter(Boolean).map((line, i) => (
-                          <li key={i}>{line.trim()}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      section.content
-                    )}
-                  </div>
-                </div>
-              ))}
-          </div>
-          <div>
-            {reportSections
-              .filter((s) => s.title === KPI_SECTION_TITLE || s.title === 'Credit & ESG')
-              .map((section) => (
-                <div key={section.title} className="report-section" style={{ marginTop: 10 }}>
-                  <div className="report-section-title">{section.title}</div>
-                  <div className="report-body">{section.content}</div>
-                  {section.title === KPI_SECTION_TITLE && kpiRows.length > 0 && (
-                    <div style={{ marginTop: 8 }}>
-                      <KpiTable rows={kpiRows} />
-                    </div>
-                  )}
-                </div>
-              ))}
-          </div>
+      {pdfUrl && (
+        <div
+          style={{
+            borderRadius: 8,
+            overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: '#1a1d35',
+            minHeight: 480,
+          }}
+        >
+          <iframe
+            title="Generated report PDF"
+            src={pdfUrl}
+            style={{ width: '100%', height: '70vh', minHeight: 480, border: 'none' }}
+          />
         </div>
       )}
 
-      {effectiveReportType && effectiveReportType !== 'overview' && (
+      {effectiveReportType && !activeArtifact && (
         <div className="report-section">
           <div className="report-section-title">{reportTitle}</div>
           <div className="report-body">
-            This report type is not yet available in V0. Placeholder content for {reportTitle} will be
-            implemented in a future release.
+            This report type is not yet available in V0. Generate from the Reporting Engine when enabled.
           </div>
         </div>
       )}
