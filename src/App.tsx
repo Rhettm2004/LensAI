@@ -1,11 +1,16 @@
 import React, { useCallback, useEffect, useReducer } from 'react';
 import type { Company, ScreenId, AppAnalysisStatus, ReportTypeId } from './types';
-import { appReducer, getInitialAppState, getPreviousScreen, hasAnyReportGenerated } from './state';
+import { appReducer, getInitialAppState, getPreviousScreen, hasAnyReportGenerated, getReportTypeLabel } from './state';
 import {
   getCompanyAnalysis,
   getCompanyForDisplay,
   generateOverviewReport,
+  buildOverviewReportArtifactFromReport,
 } from './services';
+import { buildBrandedPdfFromReport } from './services/reportPdfFromReport';
+import { analysisOutputToWorkspaceDocument } from './utils/workspaceDocument';
+import { buildOverviewReportDocument } from './utils/reportFromWorkspace';
+import { downloadReportPdfArtifact } from './services/reportPdfExport';
 import {
   WORKSPACE_WIDGET_1_MS,
   WORKSPACE_WIDGET_2_MS,
@@ -17,7 +22,8 @@ import {
   ChooseAnalystScreen,
   WorkspaceScreen,
   ReportingEngineScreen,
-  ReportViewerScreen,
+  ReportWorkspaceScreen,
+  ExportScreen,
 } from './screens';
 
 export const App: React.FC = () => {
@@ -35,7 +41,69 @@ export const App: React.FC = () => {
     dispatch({ type: 'GENERATE_REPORT_FAILED', payload: { reportType, message } });
   }, []);
   const openReportViewer = useCallback((reportType: ReportTypeId) => dispatch({ type: 'OPEN_REPORT_VIEWER', payload: reportType }), []);
+  const openReportWorkspace = useCallback(
+    (reportType: ReportTypeId) => {
+      if (reportType === 'overview' && state.analysisData) {
+        const workspace = analysisOutputToWorkspaceDocument(state.analysisData.analysis);
+        const reportDocument = buildOverviewReportDocument(workspace, state.analysisData.analysis);
+        dispatch({ type: 'OPEN_REPORT_WORKSPACE', payload: { reportType, reportDocument } });
+      } else {
+        dispatch({ type: 'OPEN_REPORT_WORKSPACE', payload: { reportType, reportDocument: null } });
+      }
+    },
+    [state.analysisData]
+  );
   const selectReportToView = useCallback((reportType: ReportTypeId) => dispatch({ type: 'SELECT_REPORT_TO_VIEW', payload: reportType }), []);
+
+  const handleExportPdf = useCallback(async () => {
+    const company = state.selectedCompany;
+    if (!company) return;
+
+    if (state.currentReportDocument) {
+      try {
+        const pdfBytes = await buildBrandedPdfFromReport({
+          reportDocument: state.currentReportDocument,
+          company,
+          reportTypeId: 'overview',
+          title: getReportTypeLabel('overview'),
+          generatedAtIso: state.currentReportDocument.generatedAt,
+        });
+        const artifact = buildOverviewReportArtifactFromReport(
+          state.currentReportDocument,
+          company,
+          pdfBytes
+        );
+        downloadReportPdfArtifact(artifact);
+      } catch {
+        generateReportFailed('overview', 'PDF export failed. Please try again.');
+      }
+      return;
+    }
+
+    const existing = state.generatedReportByType.overview;
+    if (existing?.pdfBytes?.length) {
+      downloadReportPdfArtifact(existing);
+      return;
+    }
+    if (!state.analysisData) return;
+    try {
+      const artifact = await generateOverviewReport({
+        ticker: company.ticker,
+        company,
+        analysis: state.analysisData.analysis,
+      });
+      dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: { reportType: 'overview', artifact } });
+      downloadReportPdfArtifact(artifact);
+    } catch {
+      generateReportFailed('overview', 'PDF export failed. Please try again.');
+    }
+  }, [
+    state.selectedCompany,
+    state.analysisData,
+    state.generatedReportByType.overview,
+    state.currentReportDocument,
+    generateReportFailed,
+  ]);
 
   const effectiveCompany = state.selectedCompany ?? getCompanyForDisplay(state.tickerInput);
   const canGoBack = getPreviousScreen(state.screen) !== null;
@@ -190,17 +258,48 @@ export const App: React.FC = () => {
               generatingReportType={state.generatingReportType}
               reportGenerationError={state.reportGenerationError}
               onStartGenerateReport={startGenerateReport}
-              onOpenReportViewer={openReportViewer}
+              onOpenReportWorkspace={openReportWorkspace}
             />
           )}
-          {state.screen === 'report-viewer' && (
-            <ReportViewerScreen
-              company={effectiveCompany}
-              generatedReportByType={state.generatedReportByType}
-              activeReportType={state.activeReportType}
-              onSelectReport={selectReportToView}
-            />
-          )}
+          {state.screen === 'report-viewer' && (() => {
+            const effectiveReportDocument =
+              state.currentReportDocument ??
+              (state.analysisData
+                ? buildOverviewReportDocument(
+                    analysisOutputToWorkspaceDocument(state.analysisData.analysis),
+                    state.analysisData.analysis
+                  )
+                : null);
+            return (
+              <ReportWorkspaceScreen
+                company={effectiveCompany}
+                reportDocument={effectiveReportDocument}
+                reportTypeLabel={getReportTypeLabel(state.activeReportType ?? 'overview')}
+                onBack={goBack}
+                onRegenerate={() => goToScreen('reporting-engine')}
+                onGoToExport={() => goToScreen('export')}
+              />
+            );
+          })()}
+          {state.screen === 'export' && (() => {
+            const effectiveReportDocument =
+              state.currentReportDocument ??
+              (state.analysisData
+                ? buildOverviewReportDocument(
+                    analysisOutputToWorkspaceDocument(state.analysisData.analysis),
+                    state.analysisData.analysis
+                  )
+                : null);
+            return (
+              <ExportScreen
+                company={effectiveCompany}
+                reportDocument={effectiveReportDocument}
+                reportTypeLabel={getReportTypeLabel(state.activeReportType ?? 'overview')}
+                onExportPdf={handleExportPdf}
+                onBackToAnalysisWorkspace={() => goToScreen('report-viewer')}
+              />
+            );
+          })()}
         </main>
 
         <footer className="app-footer">

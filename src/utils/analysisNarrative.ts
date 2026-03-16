@@ -1,14 +1,14 @@
 /**
- * Single mapping from AnalysisOutput → ordered narrative blocks.
- * Report PDF and expanded Product Report widget both use this list only.
- * No reportSections / hidden pipelines — if it's not a field here, it doesn't exist.
+ * Full narrative (data + evaluation) for report preview / ProductReportBody when dataOnly is false.
+ * Workspace and Overview PDF use WorkspaceDocument from workspaceDocument.ts only.
  */
 
 import type { AnalysisOutput } from '../types';
 
 export type NarrativeBlock = { title: string; content: string };
 
-const ORDER: { key: keyof AnalysisOutput; title: string }[] = [
+/** Full order: data first, then evaluation. Used only for full-narrative preview (e.g. ProductReportBody dataOnly=false). */
+const FULL_ORDER: { key: keyof AnalysisOutput; title: string }[] = [
   { key: 'companySummary', title: 'Company Summary' },
   { key: 'investmentThesis', title: 'Investment Thesis' },
   { key: 'businessModelOverview', title: 'Business Model Overview' },
@@ -19,12 +19,12 @@ const ORDER: { key: keyof AnalysisOutput; title: string }[] = [
   { key: 'creditAndEsg', title: 'Credit & ESG' },
 ];
 
-/**
- * Returns only blocks with non-empty trimmed content — same set drives PDF + widget expand.
- */
-export function getNarrativeBlocks(analysis: AnalysisOutput): NarrativeBlock[] {
+function blocksFromOrder(
+  analysis: AnalysisOutput,
+  order: { key: keyof AnalysisOutput; title: string }[]
+): NarrativeBlock[] {
   const out: NarrativeBlock[] = [];
-  for (const { key, title } of ORDER) {
+  for (const { key, title } of order) {
     const raw = analysis[key];
     if (typeof raw !== 'string') continue;
     const content = raw.trim();
@@ -32,4 +32,11 @@ export function getNarrativeBlocks(analysis: AnalysisOutput): NarrativeBlock[] {
     out.push({ title, content });
   }
   return out;
+}
+
+/**
+ * Full narrative (data + evaluation). Used for report preview when dataOnly is false; not for workspace or PDF.
+ */
+export function getNarrativeBlocks(analysis: AnalysisOutput): NarrativeBlock[] {
+  return blocksFromOrder(analysis, FULL_ORDER);
 }

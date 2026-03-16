@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import type { Company } from '../types';
 import type { GeneratedReportByType, ReportTypeId, ReportingEngineState } from '../types';
 import { ErrorCallout } from '../components/feedback';
 import { getReportTypeLabel, REPORT_TYPE_CONFIG } from '../state';
+
+const OPENING_REPORT_DELAY_MS = 300;
 
 export type ReportingEngineScreenProps = {
   company: Company;
@@ -11,7 +13,7 @@ export type ReportingEngineScreenProps = {
   generatingReportType: ReportTypeId | null;
   reportGenerationError: string | null;
   onStartGenerateReport: (reportType: ReportTypeId) => void;
-  onOpenReportViewer: (reportType: ReportTypeId) => void;
+  onOpenReportWorkspace: (reportType: ReportTypeId) => void;
 };
 
 export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
@@ -21,15 +23,27 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
   generatingReportType,
   reportGenerationError,
   onStartGenerateReport,
-  onOpenReportViewer,
+  onOpenReportWorkspace,
 }) => {
+  const [isOpeningReport, setIsOpeningReport] = useState<ReportTypeId | null>(null);
   const reportTypeBeingGenerated = generatingReportType ?? 'overview';
+
+  const handleOpenReportWorkspace = useCallback(
+    (reportType: ReportTypeId) => {
+      setIsOpeningReport(reportType);
+      setTimeout(() => {
+        onOpenReportWorkspace(reportType);
+        setIsOpeningReport(null);
+      }, OPENING_REPORT_DELAY_MS);
+    },
+    [onOpenReportWorkspace]
+  );
 
   return (
     <div>
       <div className="app-section-header">
-        <div className="app-section-eyebrow">Step 4 · Reporting Engine</div>
-        <div className="app-section-title">Evaluation &amp; Reporting Engine</div>
+        <div className="app-section-eyebrow">Step 4 · Analysis Engine</div>
+        <div className="app-section-title">Analysis Engine</div>
         <div className="app-section-subtitle">
           {reportingEngineState === 'engine'
             ? 'Generate report outputs from your completed analysis. Choose a report type below and click Generate or View.'
@@ -55,6 +69,7 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
             const isGenerated = generatedReportByType[config.id] != null;
             const isAvailable = config.availableInV0;
             const isMuted = !isAvailable;
+            const isOpeningThis = isOpeningReport === config.id;
 
             return (
               <div
@@ -68,12 +83,17 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
                 <div className="analyst-desc">{config.description}</div>
                 <div style={{ marginTop: 12, display: 'flex', justifyContent: isMuted ? 'flex-end' : 'flex-start' }}>
                   {isAvailable ? (
-                    isGenerated ? (
+                    isOpeningThis ? (
+                      <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+                        Preparing report…
+                      </div>
+                    ) : isGenerated ? (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                         <button
                           type="button"
                           className="button-primary"
-                          onClick={() => onOpenReportViewer(config.id)}
+                          onClick={() => handleOpenReportWorkspace(config.id)}
+                          disabled={isOpeningReport != null}
                         >
                           View
                         </button>
@@ -82,7 +102,11 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
                             type="button"
                             className="button-ghost"
                             style={{ fontSize: 12 }}
-                            onClick={() => onStartGenerateReport(config.id)}
+                            onClick={() => {
+                              onStartGenerateReport(config.id);
+                              handleOpenReportWorkspace(config.id);
+                            }}
+                            disabled={isOpeningReport != null}
                           >
                             Regenerate
                           </button>
@@ -92,7 +116,15 @@ export const ReportingEngineScreen: React.FC<ReportingEngineScreenProps> = ({
                       <button
                         type="button"
                         className="button-primary"
-                        onClick={() => onStartGenerateReport(config.id)}
+                        onClick={() => {
+                          if (config.id === 'overview') {
+                            handleOpenReportWorkspace(config.id);
+                            onStartGenerateReport(config.id);
+                          } else {
+                            onStartGenerateReport(config.id);
+                          }
+                        }}
+                        disabled={isOpeningReport != null}
                       >
                         Generate
                       </button>

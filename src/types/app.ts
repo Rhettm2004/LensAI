@@ -5,13 +5,15 @@
 
 import type { Company, CompanyAnalysisResponse } from './index';
 import type { GeneratedReportArtifact } from './reportDocument';
+import type { ReportDocument } from './report';
 
 export type ScreenId =
   | 'select-company'
   | 'choose-analyst'
   | 'workspace'
   | 'reporting-engine'
-  | 'report-viewer';
+  | 'report-viewer'
+  | 'export';
 
 export type AnalystId = 'fundamental';
 
@@ -56,4 +58,6 @@ export type AppState = {
   reportingEngineState: ReportingEngineState;
   generatingReportType: ReportTypeId | null;
   activeReportType: ReportTypeId | null;
+  /** Report document shown in Report Workspace (overview flow). Cleared when leaving. */
+  currentReportDocument: ReportDocument | null;
 };

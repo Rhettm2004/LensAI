@@ -568,6 +568,29 @@ body {
   }
 }
 
+.report-workspace-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.report-workspace-row-full {
+  min-width: 0;
+}
+
+.report-workspace-row-half {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (max-width: 880px) {
+  .report-workspace-row-half {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .workspace-header {
   display: flex;
   justify-content: space-between;
@@ -841,6 +864,16 @@ body {
 .report-body {
   font-size: 12px;
   color: var(--color-text-muted);
+}
+
+.report-block-empty {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.report-block-card .widget-body {
+  min-height: 80px;
 }
 
 .bullet-list {

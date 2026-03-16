@@ -19,6 +19,6 @@ export function getProgressMessage(status: AppAnalysisStatus): string {
 
 export function getWidget1LoadingLabel(status: AppAnalysisStatus): string {
   return status === 'running'
-    ? 'Loading Product Report…'
-    : 'Reconstructing business model and narrative…';
+    ? 'Loading Company & market data…'
+    : 'Loading company and market data…';
 }
