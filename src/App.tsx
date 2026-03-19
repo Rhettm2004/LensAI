@@ -1,121 +1,125 @@
 import React, { useCallback, useEffect, useReducer } from 'react';
-import type { Company, ScreenId, AppAnalysisStatus, ReportTypeId } from './types';
-import { appReducer, getInitialAppState, getPreviousScreen, hasAnyReportGenerated, getReportTypeLabel } from './state';
+import type { Company, ScreenId } from './types';
+import { appReducer, getInitialAppState, getPreviousScreen } from './state';
 import {
   getCompanyAnalysis,
   getCompanyForDisplay,
-  generateOverviewReport,
-  buildOverviewReportArtifactFromReport,
+  generateValuationReport,
+  buildValuationReportArtifactFromReport,
 } from './services';
 import { buildBrandedPdfFromReport } from './services/reportPdfFromReport';
-import { analysisOutputToWorkspaceDocument } from './utils/workspaceDocument';
-import { buildOverviewReportDocument } from './utils/reportFromWorkspace';
+import { buildAnalysisWorkspaceDocument } from './utils/buildAnalysisFromResearch';
 import { downloadReportPdfArtifact } from './services/reportPdfExport';
-import {
-  WORKSPACE_WIDGET_1_MS,
-  WORKSPACE_WIDGET_2_MS,
-  WORKSPACE_COMPLETE_MS,
-} from './constants';
+import { WORKSPACE_RESEARCH_WIDGET_MS, ANALYSIS_WORKSPACE_REVEAL_MS } from './constants';
+import { getReportTypeLabel } from './state/constants';
+import { valuationReportTitle } from './utils/buildValuationReportDocument';
 import { WorkflowStepper } from './components/layout';
 import {
   SelectCompanyScreen,
   ChooseAnalystScreen,
   WorkspaceScreen,
+  AnalysisWorkspaceScreen,
   ReportingEngineScreen,
-  ReportWorkspaceScreen,
   ExportScreen,
 } from './screens';
 
 export const App: React.FC = () => {
   const [state, dispatch] = useReducer(appReducer, undefined, getInitialAppState);
 
-  const goToScreen = useCallback((screen: ScreenId) => dispatch({ type: 'GO_TO_SCREEN', payload: screen }), []);
+  const goToScreen = useCallback(
+    (screen: ScreenId) => {
+      if (screen === 'analysis-workspace' && !state.currentAnalysisDocument) return;
+      if (
+        screen === 'report-viewer' &&
+        !state.currentReportDocument &&
+        !state.generatedReportByType.valuation?.pdfBytes?.length
+      ) {
+        return;
+      }
+      dispatch({ type: 'GO_TO_SCREEN', payload: screen });
+    },
+    [
+      state.currentAnalysisDocument,
+      state.currentReportDocument,
+      state.generatedReportByType.valuation?.pdfBytes?.length,
+    ]
+  );
   const goBack = useCallback(() => dispatch({ type: 'GO_BACK' }), []);
   const resetFlow = useCallback(() => dispatch({ type: 'RESET_FLOW' }), []);
   const setTickerInput = useCallback((value: string) => dispatch({ type: 'SET_TICKER_INPUT', payload: value }), []);
   const selectCompany = useCallback((company: Company) => dispatch({ type: 'SELECT_COMPANY', payload: company }), []);
   const runAnalysis = useCallback(() => dispatch({ type: 'RUN_ANALYSIS' }), []);
-  const setAnalysisStatus = useCallback((status: AppAnalysisStatus) => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: status }), []);
-  const startGenerateReport = useCallback((reportType: ReportTypeId) => dispatch({ type: 'START_GENERATE_REPORT', payload: reportType }), []);
-  const generateReportFailed = useCallback((reportType: ReportTypeId, message: string) => {
-    dispatch({ type: 'GENERATE_REPORT_FAILED', payload: { reportType, message } });
-  }, []);
-  const openReportViewer = useCallback((reportType: ReportTypeId) => dispatch({ type: 'OPEN_REPORT_VIEWER', payload: reportType }), []);
-  const openReportWorkspace = useCallback(
-    (reportType: ReportTypeId) => {
-      if (reportType === 'overview' && state.analysisData) {
-        const workspace = analysisOutputToWorkspaceDocument(state.analysisData.analysis);
-        const reportDocument = buildOverviewReportDocument(workspace, state.analysisData.analysis);
-        dispatch({ type: 'OPEN_REPORT_WORKSPACE', payload: { reportType, reportDocument } });
-      } else {
-        dispatch({ type: 'OPEN_REPORT_WORKSPACE', payload: { reportType, reportDocument: null } });
-      }
-    },
-    [state.analysisData]
+  const startGenerateReport = useCallback(
+    () => dispatch({ type: 'START_GENERATE_REPORT', payload: 'valuation' }),
+    []
   );
-  const selectReportToView = useCallback((reportType: ReportTypeId) => dispatch({ type: 'SELECT_REPORT_TO_VIEW', payload: reportType }), []);
+  const generateReportFailed = useCallback((message: string) => {
+    dispatch({ type: 'GENERATE_REPORT_FAILED', payload: { reportType: 'valuation', message } });
+  }, []);
+
+  const continueToAnalysis = useCallback(() => {
+    if (!state.analysisData) return;
+    const doc = buildAnalysisWorkspaceDocument(
+      state.analysisData.analysis,
+      state.analysisData.company.ticker
+    );
+    dispatch({ type: 'CONTINUE_TO_ANALYSIS', payload: doc });
+  }, [state.analysisData]);
+
+  const continueToReporting = useCallback(() => dispatch({ type: 'CONTINUE_TO_REPORTING' }), []);
+
+  const clearValuationAndRegenerate = useCallback(() => {
+    dispatch({ type: 'CLEAR_VALUATION_ARTIFACT' });
+    dispatch({ type: 'START_GENERATE_REPORT', payload: 'valuation' });
+  }, []);
 
   const handleExportPdf = useCallback(async () => {
     const company = state.selectedCompany;
-    if (!company) return;
+    if (!company || !state.currentAnalysisDocument || !state.analysisData) return;
 
     if (state.currentReportDocument) {
       try {
         const pdfBytes = await buildBrandedPdfFromReport({
           reportDocument: state.currentReportDocument,
           company,
-          reportTypeId: 'overview',
-          title: getReportTypeLabel('overview'),
+          reportTypeId: 'valuation',
+          title: valuationReportTitle(company),
           generatedAtIso: state.currentReportDocument.generatedAt,
         });
-        const artifact = buildOverviewReportArtifactFromReport(
+        const artifact = buildValuationReportArtifactFromReport(
           state.currentReportDocument,
           company,
           pdfBytes
         );
         downloadReportPdfArtifact(artifact);
       } catch {
-        generateReportFailed('overview', 'PDF export failed. Please try again.');
+        generateReportFailed('PDF export failed. Please try again.');
       }
       return;
     }
 
-    const existing = state.generatedReportByType.overview;
+    const existing = state.generatedReportByType.valuation;
     if (existing?.pdfBytes?.length) {
       downloadReportPdfArtifact(existing);
-      return;
-    }
-    if (!state.analysisData) return;
-    try {
-      const artifact = await generateOverviewReport({
-        ticker: company.ticker,
-        company,
-        analysis: state.analysisData.analysis,
-      });
-      dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: { reportType: 'overview', artifact } });
-      downloadReportPdfArtifact(artifact);
-    } catch {
-      generateReportFailed('overview', 'PDF export failed. Please try again.');
     }
   }, [
     state.selectedCompany,
     state.analysisData,
-    state.generatedReportByType.overview,
+    state.currentAnalysisDocument,
     state.currentReportDocument,
+    state.generatedReportByType.valuation,
     generateReportFailed,
   ]);
 
   const effectiveCompany = state.selectedCompany ?? getCompanyForDisplay(state.tickerInput);
   const canGoBack = getPreviousScreen(state.screen) !== null;
-
   const analysis = state.analysisData?.analysis ?? null;
 
-  const screensNeedingAnalysis: ScreenId[] = ['workspace', 'reporting-engine', 'report-viewer'];
+  const screensNeedingAnalysis: ScreenId[] = ['research', 'analysis-workspace', 'reporting'];
   const needsAnalysisData = screensNeedingAnalysis.includes(state.screen) && state.selectedCompany;
   const hasStaleOrNoAnalysis =
     !state.analysisData || state.analysisData.company.ticker !== state.selectedCompany?.ticker;
 
-  // Fetch analysis when on a screen that needs it and data is missing or for a different company
   useEffect(() => {
     if (!needsAnalysisData || !hasStaleOrNoAnalysis || !state.selectedCompany) return;
     const ticker = state.selectedCompany.ticker;
@@ -124,61 +128,62 @@ export const App: React.FC = () => {
       .catch(() => {
         dispatch({
           type: 'SET_ANALYSIS_LOAD_ERROR',
-          payload: 'Could not load analysis for this company. Check your connection and try again.',
+          payload: 'Could not load research for this company. Check your connection and try again.',
         });
       });
   }, [state.screen, state.selectedCompany?.ticker, state.analysisData, needsAnalysisData, hasStaleOrNoAnalysis]);
 
-  // Advance workspace widget status only after analysis data has loaded (ensures KPI table has data).
-  // Deps intentionally exclude analysisStatus so we don't re-run when status advances (which would cleanup and cancel t2/t3).
   useEffect(() => {
-    if (
-      state.screen !== 'workspace' ||
-      state.analysisStatus !== 'running' ||
-      !state.analysisData
-    ) return;
-    const t1 = setTimeout(
-      () => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'widget_1_complete' }),
-      WORKSPACE_WIDGET_1_MS
-    );
-    const t2 = setTimeout(
-      () => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'widget_2_complete' }),
-      WORKSPACE_WIDGET_2_MS
-    );
-    const t3 = setTimeout(
+    if (state.screen !== 'research' || state.analysisStatus !== 'running' || !state.analysisData) return;
+    const t = setTimeout(
       () => dispatch({ type: 'SET_ANALYSIS_STATUS', payload: 'complete' }),
-      WORKSPACE_COMPLETE_MS
+      WORKSPACE_RESEARCH_WIDGET_MS
     );
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
-  }, [state.screen, state.analysisData]);
+    return () => clearTimeout(t);
+  }, [state.screen, state.analysisData, state.analysisStatus]);
 
-  // Overview report generation: call report service once engine enters generating state; no duplicate timers.
+  useEffect(() => {
+    if (state.screen !== 'analysis-workspace' || !state.currentAnalysisDocument || !state.selectedCompany) return;
+    const revealKey = `${state.selectedCompany.ticker}|${state.currentAnalysisDocument.generatedAt}`;
+    if (state.analysisWorkspaceRevealCompleteKey === revealKey) return;
+    const t = setTimeout(() => {
+      dispatch({ type: 'ANALYSIS_WORKSPACE_REVEAL_DONE', payload: revealKey });
+    }, ANALYSIS_WORKSPACE_REVEAL_MS);
+    return () => clearTimeout(t);
+  }, [
+    state.screen,
+    state.selectedCompany?.ticker,
+    state.currentAnalysisDocument?.generatedAt,
+    state.analysisWorkspaceRevealCompleteKey,
+  ]);
+
   useEffect(() => {
     if (
       state.reportingEngineState !== 'generating' ||
-      state.generatingReportType !== 'overview' ||
+      state.generatingReportType !== 'valuation' ||
       !state.selectedCompany ||
-      !analysis
+      !analysis ||
+      !state.currentAnalysisDocument
     ) {
       return;
     }
     let cancelled = false;
-    const ticker = state.selectedCompany.ticker;
-    generateOverviewReport({ ticker, company: state.selectedCompany, analysis })
-      .then((artifact) => {
+    generateValuationReport({
+      ticker: state.selectedCompany.ticker,
+      company: state.selectedCompany,
+      analysis,
+      analysisDoc: state.currentAnalysisDocument,
+    })
+      .then(({ artifact, reportDocument }) => {
         if (!cancelled) {
-          dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: { reportType: 'overview', artifact } });
+          dispatch({ type: 'SET_CURRENT_REPORT_DOCUMENT', payload: reportDocument });
+          dispatch({ type: 'COMPLETE_GENERATE_REPORT', payload: { reportType: 'valuation', artifact } });
         }
       })
       .catch(() => {
         if (!cancelled) {
           generateReportFailed(
-            'overview',
-            'Report generation failed. Please try again or go back to the workspace.'
+            'Report generation failed. Try again or go back to adjust your research and analysis.'
           );
         }
       });
@@ -190,6 +195,7 @@ export const App: React.FC = () => {
     state.generatingReportType,
     state.selectedCompany?.ticker,
     analysis,
+    state.currentAnalysisDocument,
     generateReportFailed,
   ]);
 
@@ -212,10 +218,10 @@ export const App: React.FC = () => {
             )}
             {state.screen !== 'select-company' && (
               <button type="button" className="button-ghost" onClick={resetFlow}>
-                Start again with new ticker
+                Start again
               </button>
             )}
-            <div className="app-pill">V0 · Concept Prototype</div>
+            <div className="app-pill">6-step flow</div>
           </div>
         </header>
 
@@ -223,88 +229,101 @@ export const App: React.FC = () => {
           <WorkflowStepper
             currentScreen={state.screen}
             maxStepReached={state.maxStepReached}
-            hasAnyReportGenerated={hasAnyReportGenerated(state.generatedReportByType)}
             onStepClick={goToScreen}
           />
+
           {state.screen === 'select-company' && (
             <SelectCompanyScreen
               tickerInput={state.tickerInput}
+              selectedTicker={state.selectedCompany?.ticker ?? null}
               onTickerChange={setTickerInput}
               onCompanySelect={selectCompany}
             />
           )}
-          {state.screen === 'choose-analyst' && (
-            <ChooseAnalystScreen
-              company={effectiveCompany}
-              onRunAnalysis={runAnalysis}
-            />
+
+          {state.screen === 'select-analyst' && state.selectedCompany && (
+            <ChooseAnalystScreen company={state.selectedCompany} onRunAnalysis={runAnalysis} />
           )}
-          {state.screen === 'workspace' && (
+
+          {state.screen === 'select-analyst' && !state.selectedCompany && (
+            <div style={{ padding: 24, color: '#a3a7c2' }}>
+              Select a company first.{' '}
+              <button type="button" className="button-ghost" onClick={() => goToScreen('select-company')}>
+                Select Company
+              </button>
+            </div>
+          )}
+
+          {state.screen === 'research' && (
             <WorkspaceScreen
               company={effectiveCompany}
               analysis={analysis}
               analysisStatus={state.analysisStatus}
               analysisLoadError={state.analysisLoadError}
-              onAnalysisStatusChange={setAnalysisStatus}
               onRetryAnalysis={runAnalysis}
-              onOpenReportingEngine={() => goToScreen('reporting-engine')}
+              onContinueToAnalysis={continueToAnalysis}
             />
           )}
-          {state.screen === 'reporting-engine' && (
+
+          {state.screen === 'analysis-workspace' && state.currentAnalysisDocument && state.selectedCompany && (
+            <AnalysisWorkspaceScreen
+              company={effectiveCompany}
+              analysisDoc={state.currentAnalysisDocument}
+              analysisContentReady={
+                state.analysisWorkspaceRevealCompleteKey ===
+                `${state.selectedCompany.ticker}|${state.currentAnalysisDocument.generatedAt}`
+              }
+              onContinueToReporting={continueToReporting}
+            />
+          )}
+
+          {state.screen === 'analysis-workspace' && !state.currentAnalysisDocument && (
+            <div style={{ padding: 24, color: '#a3a7c2' }}>
+              No analysis document.{' '}
+              <button type="button" className="button-ghost" onClick={() => goToScreen('research')}>
+                Return to Research
+              </button>
+            </div>
+          )}
+
+          {state.screen === 'reporting' && state.currentAnalysisDocument && (
             <ReportingEngineScreen
               company={effectiveCompany}
-              generatedReportByType={state.generatedReportByType}
               reportingEngineState={state.reportingEngineState}
-              generatingReportType={state.generatingReportType}
               reportGenerationError={state.reportGenerationError}
-              onStartGenerateReport={startGenerateReport}
-              onOpenReportWorkspace={openReportWorkspace}
+              hasGeneratedReport={
+                state.currentReportDocument != null ||
+                (state.generatedReportByType.valuation?.pdfBytes?.length ?? 0) > 0
+              }
+              onGenerateValuationReport={startGenerateReport}
+              onRegenerate={clearValuationAndRegenerate}
+              onOpenReportViewer={() => goToScreen('report-viewer')}
             />
           )}
-          {state.screen === 'report-viewer' && (() => {
-            const effectiveReportDocument =
-              state.currentReportDocument ??
-              (state.analysisData
-                ? buildOverviewReportDocument(
-                    analysisOutputToWorkspaceDocument(state.analysisData.analysis),
-                    state.analysisData.analysis
-                  )
-                : null);
-            return (
-              <ReportWorkspaceScreen
-                company={effectiveCompany}
-                reportDocument={effectiveReportDocument}
-                reportTypeLabel={getReportTypeLabel(state.activeReportType ?? 'overview')}
-                onBack={goBack}
-                onRegenerate={() => goToScreen('reporting-engine')}
-                onGoToExport={() => goToScreen('export')}
-              />
-            );
-          })()}
-          {state.screen === 'export' && (() => {
-            const effectiveReportDocument =
-              state.currentReportDocument ??
-              (state.analysisData
-                ? buildOverviewReportDocument(
-                    analysisOutputToWorkspaceDocument(state.analysisData.analysis),
-                    state.analysisData.analysis
-                  )
-                : null);
-            return (
-              <ExportScreen
-                company={effectiveCompany}
-                reportDocument={effectiveReportDocument}
-                reportTypeLabel={getReportTypeLabel(state.activeReportType ?? 'overview')}
-                onExportPdf={handleExportPdf}
-                onBackToAnalysisWorkspace={() => goToScreen('report-viewer')}
-              />
-            );
-          })()}
+
+          {state.screen === 'reporting' && !state.currentAnalysisDocument && (
+            <div style={{ padding: 24, color: '#a3a7c2' }}>
+              Complete Analysis Workspace first.{' '}
+              <button type="button" className="button-ghost" onClick={() => goToScreen('analysis-workspace')}>
+                Go to Analysis
+              </button>
+            </div>
+          )}
+
+          {state.screen === 'report-viewer' && (
+            <ExportScreen
+              company={effectiveCompany}
+              reportDocument={state.currentReportDocument}
+              reportTypeLabel={getReportTypeLabel('valuation')}
+              onExportPdf={handleExportPdf}
+              onBackToReporting={() => goToScreen('reporting')}
+            />
+          )}
         </main>
 
         <footer className="app-footer">
           <span>
-            <strong>LensAI V0</strong> · AI analyst workflow prototype
+            <strong>LensAI</strong> · Company → Analyst → Research → Analysis → Reporting → Export
           </span>
         </footer>
       </div>

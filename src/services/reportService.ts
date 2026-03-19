@@ -1,90 +1,85 @@
 /**
- * Report generation: one branded PDF from ReportDocument.
- * Pipeline: analysis → WorkspaceDocument → buildOverviewReportDocument → ReportDocument → buildBrandedPdfFromReport.
- * Future: POST /reports/generate returns same artifact (PDF bytes + metadata).
+ * Report generation: branded PDF from ReportDocument.
  */
 
 import { REPORT_GENERATION_MOCK_MS } from '../constants/timing';
 import type { AnalysisOutput, Company } from '../types';
 import type { GeneratedReportArtifact } from '../types/reportDocument';
 import type { ReportDocument } from '../types/report';
-import { getReportTypeLabel } from '../state/constants';
-import { analysisOutputToWorkspaceDocument } from '../utils/workspaceDocument';
-import { buildOverviewReportDocument } from '../utils/reportFromWorkspace';
+import type { AnalysisWorkspaceDocument } from '../types/report';
+import { valuationReportTitle } from '../utils/buildValuationReportDocument';
+import { buildValuationReportDocument } from '../utils/buildValuationReportDocument';
 import { buildBrandedPdfFromReport } from './reportPdfFromReport';
 
-export interface GenerateOverviewReportInput {
+export interface GenerateValuationReportInput {
   ticker: string;
   company: Company;
-  /** Analysis output — PDF built via WorkspaceDocument → ReportDocument. */
   analysis: AnalysisOutput;
+  analysisDoc: AnalysisWorkspaceDocument;
 }
 
-/**
- * Generate overview artifact: PDF built from ReportDocument (workspace + analysis → reportDoc → PDF).
- */
-export async function generateOverviewReport(
-  input: GenerateOverviewReportInput
-): Promise<GeneratedReportArtifact> {
+export async function generateValuationReport(
+  input: GenerateValuationReportInput
+): Promise<{ artifact: GeneratedReportArtifact; reportDocument: ReportDocument }> {
   await new Promise((resolve) => setTimeout(resolve, REPORT_GENERATION_MOCK_MS));
 
-  const workspace = analysisOutputToWorkspaceDocument(input.analysis);
-  const reportDoc = buildOverviewReportDocument(workspace, input.analysis);
+  const reportDoc = buildValuationReportDocument(
+    input.analysis,
+    input.analysisDoc,
+    input.company
+  );
   const generatedAt = reportDoc.generatedAt;
-  const title = getReportTypeLabel('overview');
+  const docTitle = valuationReportTitle(input.company);
 
   const pdfBytes = await buildBrandedPdfFromReport({
     reportDocument: reportDoc,
     company: input.company,
-    reportTypeId: 'overview',
-    title,
+    reportTypeId: 'valuation',
+    title: docTitle,
     generatedAtIso: generatedAt,
   });
 
-  const narrativeBlocks = reportDoc.blocks.filter((b) => b.blockType === 'reportNarrative');
-  const kpiBlock = reportDoc.blocks.find((b) => b.blockType === 'reportKpiHighlights');
-  const kpiRowCount =
-    kpiBlock?.blockType === 'reportKpiHighlights' ? kpiBlock.rows.length : 0;
-  const hasKpiCaption = false;
-
-  return {
-    reportTypeId: 'overview',
-    title,
+  const artifact: GeneratedReportArtifact = {
+    reportTypeId: 'valuation',
+    title: docTitle,
     company: input.company,
     generatedAt,
     workspaceSource: {
-      narrativeBlockTitles: narrativeBlocks.map((b) => b.title),
-      kpiRowCount,
-      hasKpiCaption,
+      narrativeBlockTitles: reportDoc.blocks
+        .filter((b) => b.blockType === 'reportNarrative')
+        .map((b) => b.title),
+      kpiRowCount: reportDoc.blocks.find((b) => b.blockType === 'reportKpiHighlights')?.rows.length ?? 0,
+      hasKpiCaption: false,
     },
     pdfBytes,
   };
+
+  return { artifact, reportDocument: reportDoc };
 }
 
-/**
- * Build a download artifact from an existing ReportDocument and PDF bytes.
- * Used when exporting from Report Workspace so the PDF matches the current report.
- */
-export function buildOverviewReportArtifactFromReport(
+export function buildValuationReportArtifactFromReport(
   reportDoc: ReportDocument,
   company: Company,
   pdfBytes: Uint8Array
 ): GeneratedReportArtifact {
-  const title = getReportTypeLabel('overview');
+  const title = valuationReportTitle(company);
   const narrativeBlocks = reportDoc.blocks.filter((b) => b.blockType === 'reportNarrative');
   const kpiBlock = reportDoc.blocks.find((b) => b.blockType === 'reportKpiHighlights');
-  const kpiRowCount =
-    kpiBlock?.blockType === 'reportKpiHighlights' ? kpiBlock.rows.length : 0;
   return {
-    reportTypeId: 'overview',
+    reportTypeId: 'valuation',
     title,
     company,
     generatedAt: reportDoc.generatedAt,
     workspaceSource: {
       narrativeBlockTitles: narrativeBlocks.map((b) => b.title),
-      kpiRowCount,
+      kpiRowCount: kpiBlock?.blockType === 'reportKpiHighlights' ? kpiBlock.rows.length : 0,
       hasKpiCaption: false,
     },
     pdfBytes,
   };
+}
+
+/** @deprecated Legacy overview path — kept for any stray imports during migration. */
+export async function generateOverviewReport(): Promise<never> {
+  throw new Error('Overview report is not available; use generateValuationReport.');
 }

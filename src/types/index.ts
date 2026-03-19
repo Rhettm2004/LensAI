@@ -59,6 +59,10 @@ export interface AnalysisOutput {
   /** Optional caption above KPI table in Workspace + PDF KPI section. */
   kpiSnapshotCaption?: string;
   kpiRows: KpiRow[];
+  /** Research Workspace: revenue / earnings table. */
+  earningsRevenueSource: string;
+  earningsRevenueCaption?: string;
+  earningsRevenueRows: KpiRow[];
   /**
    * @deprecated Do not use for report generation. Use getNarrativeBlocks(analysis) only.
    * Kept empty in mock for backend compatibility during migration.
@@ -99,6 +103,7 @@ export type {
   ReportNarrativeBlock,
   ReportBulletsBlock,
   ReportKpiHighlightsBlock,
+  AnalysisWorkspaceDocument,
 } from './report';
 
 // Re-export app state types for convenience

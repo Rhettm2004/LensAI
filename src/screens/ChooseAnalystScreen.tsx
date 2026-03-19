@@ -12,10 +12,11 @@ export const ChooseAnalystScreen: React.FC<ChooseAnalystScreenProps> = ({
 }) => (
   <div>
     <div className="app-section-header">
-      <div className="app-section-eyebrow">Screen 2 · Analysis Setup</div>
-      <div className="app-section-title">Choose Analysis Setup</div>
+      <div className="app-section-eyebrow">Step 2 · Select Analyst</div>
+      <div className="app-section-title">Select Analyst</div>
       <div className="app-section-subtitle">
-        Select an AI analyst to run structured research on <strong>{company.name}</strong>.
+        Confirm <strong>Fundamental Analyst</strong> to open the Research Workspace for{' '}
+        <strong>{company.name}</strong>.
       </div>
     </div>
 
@@ -31,28 +32,28 @@ export const ChooseAnalystScreen: React.FC<ChooseAnalystScreenProps> = ({
           <span className="analyst-chip">V0 Analyst</span>
         </div>
         <div className="analyst-desc">
-          Performs structured fundamental analysis focused on business model, performance trends,
-          and investment-relevant KPIs.
+          Structured pass over revenue and earnings with short-form interpretation—scoped to what
+          LensAI produces today.
         </div>
         <div className="analyst-list">
           <div>Scope includes:</div>
           <ul>
-            <li>Business model analysis</li>
-            <li>Financial performance</li>
-            <li>KPI trend reconstruction</li>
-            <li>Investment-relevant metrics</li>
+            <li>Revenue analysis</li>
+            <li>Earnings analysis</li>
+            <li>Basic financial trend interpretation</li>
           </ul>
         </div>
         <div className="analyst-list" style={{ marginTop: 8 }}>
           <div>Outputs:</div>
           <ul>
-            <li>Company &amp; market data</li>
-            <li>KPI Table</li>
+            <li>Revenue &amp; earnings table</li>
+            <li>Financial interpretation</li>
+            <li>Valuation report</li>
           </ul>
         </div>
         <div style={{ marginTop: 12 }}>
           <button type="button" className="button-primary" onClick={onRunAnalysis}>
-            Run analysis
+            Continue to Research Workspace
           </button>
         </div>
       </div>

@@ -2,17 +2,11 @@
  * App state reducer and initial state. Single source of truth for workflow and UI state.
  */
 
-import type { Company } from '../types';
-import type { CompanyAnalysisResponse } from '../types';
+import type { Company, CompanyAnalysisResponse } from '../types';
 import type { GeneratedReportArtifact } from '../types/reportDocument';
 import type { ReportDocument } from '../types/report';
-import type {
-  AppState,
-  ScreenId,
-  AnalystId,
-  AnalysisStatus,
-  ReportTypeId,
-} from '../types/app';
+import type { AnalysisWorkspaceDocument } from '../types/report';
+import type { AppState, ScreenId, AnalystId, AnalysisStatus, ReportTypeId } from '../types/app';
 import {
   SCREEN_ORDER,
   INITIAL_GENERATED_REPORT_BY_TYPE,
@@ -35,38 +29,61 @@ export type AppAction =
   | { type: 'START_GENERATE_REPORT'; payload: ReportTypeId }
   | { type: 'COMPLETE_GENERATE_REPORT'; payload: { reportType: ReportTypeId; artifact: GeneratedReportArtifact } }
   | { type: 'GENERATE_REPORT_FAILED'; payload: { reportType: ReportTypeId; message: string } }
-  | { type: 'OPEN_REPORT_VIEWER'; payload: ReportTypeId }
-  | { type: 'OPEN_REPORT_WORKSPACE'; payload: { reportType: ReportTypeId; reportDocument: ReportDocument | null } }
-  | { type: 'SELECT_REPORT_TO_VIEW'; payload: ReportTypeId }
-  | { type: 'BACK_TO_REPORTING_ENGINE' };
+  | { type: 'CONTINUE_TO_ANALYSIS'; payload: AnalysisWorkspaceDocument }
+  | { type: 'CONTINUE_TO_REPORTING' }
+  | { type: 'SET_CURRENT_REPORT_DOCUMENT'; payload: ReportDocument | null }
+  | { type: 'CLEAR_VALUATION_ARTIFACT' }
+  | { type: 'ANALYSIS_WORKSPACE_REVEAL_DONE'; payload: string };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'GO_TO_SCREEN': {
       const newIndex = SCREEN_ORDER.indexOf(action.payload);
       const nextMax = Math.max(state.maxStepReached, newIndex);
-      const keepReportContext = action.payload === 'report-viewer' || action.payload === 'export';
-      const clearReportDoc = keepReportContext ? {} : { currentReportDocument: null };
-      return { ...state, screen: action.payload, maxStepReached: nextMax, ...clearReportDoc };
+      return {
+        ...state,
+        screen: action.payload,
+        maxStepReached: nextMax,
+      };
     }
 
     case 'GO_BACK': {
       const prev = getPreviousScreen(state.screen);
-      const clearReportDoc = state.screen === 'report-viewer' ? { currentReportDocument: null } : {};
-      return prev ? { ...state, screen: prev, ...clearReportDoc } : state;
+      return prev ? { ...state, screen: prev } : state;
     }
 
     case 'SET_TICKER_INPUT':
       return { ...state, tickerInput: action.payload };
 
-    case 'SELECT_COMPANY':
+    case 'SELECT_COMPANY': {
+      const sameTicker = state.selectedCompany?.ticker === action.payload.ticker;
+      if (sameTicker) {
+        return {
+          ...state,
+          selectedCompany: action.payload,
+          tickerInput: action.payload.ticker,
+          screen: 'select-analyst',
+          maxStepReached: Math.max(state.maxStepReached, 1),
+        };
+      }
       return {
         ...state,
         selectedCompany: action.payload,
         tickerInput: action.payload.ticker,
-        screen: 'choose-analyst',
-        maxStepReached: Math.max(state.maxStepReached, 1),
+        screen: 'select-analyst',
+        maxStepReached: 1,
+        analysisData: null,
+        analysisLoadError: null,
+        analysisStatus: 'idle',
+        currentAnalysisDocument: null,
+        currentReportDocument: null,
+        analysisWorkspaceRevealCompleteKey: null,
+        generatedReportByType: INITIAL_GENERATED_REPORT_BY_TYPE,
+        reportingEngineState: 'engine',
+        generatingReportType: null,
+        activeReportType: null,
       };
+    }
 
     case 'SELECT_ANALYST':
       return { ...state, selectedAnalystId: action.payload };
@@ -74,7 +91,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'RUN_ANALYSIS':
       return {
         ...state,
-        screen: 'workspace',
+        screen: 'research',
         maxStepReached: Math.max(state.maxStepReached, 2),
         selectedAnalystId: 'fundamental',
         analysisStatus: 'running',
@@ -84,6 +101,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         reportingEngineState: 'engine',
         generatingReportType: null,
         activeReportType: null,
+        currentReportDocument: null,
+        currentAnalysisDocument: null,
+        analysisWorkspaceRevealCompleteKey: null,
       };
 
     case 'SET_ANALYSIS_DATA':
@@ -102,18 +122,21 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...getInitialAppState(),
         screen: 'select-company',
-        analysisData: null,
+        tickerInput: state.tickerInput,
       };
 
     case 'CHANGE_ANALYST':
       return {
         ...state,
-        screen: 'choose-analyst',
+        screen: 'select-analyst',
         analysisStatus: 'idle',
         generatedReportByType: INITIAL_GENERATED_REPORT_BY_TYPE,
         reportingEngineState: 'engine',
         generatingReportType: null,
         activeReportType: null,
+        currentReportDocument: null,
+        currentAnalysisDocument: null,
+        analysisWorkspaceRevealCompleteKey: null,
       };
 
     case 'START_GENERATE_REPORT':
@@ -128,9 +151,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       const { reportType, artifact } = action.payload;
       return {
         ...state,
+        screen: 'report-viewer',
+        maxStepReached: Math.max(state.maxStepReached, 5),
         reportingEngineState: 'engine',
         generatingReportType: null,
         reportGenerationError: null,
+        activeReportType: reportType,
         generatedReportByType: {
           ...state.generatedReportByType,
           [reportType]: artifact,
@@ -146,28 +172,36 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         reportGenerationError: action.payload.message,
       };
 
-    case 'OPEN_REPORT_VIEWER':
+    case 'CONTINUE_TO_ANALYSIS':
       return {
         ...state,
-        screen: 'report-viewer',
-        activeReportType: action.payload,
+        screen: 'analysis-workspace',
+        currentAnalysisDocument: action.payload,
+        maxStepReached: Math.max(state.maxStepReached, 3),
+        currentReportDocument: null,
+        analysisWorkspaceRevealCompleteKey: null,
+      };
+
+    case 'ANALYSIS_WORKSPACE_REVEAL_DONE':
+      return { ...state, analysisWorkspaceRevealCompleteKey: action.payload };
+
+    case 'CONTINUE_TO_REPORTING':
+      return {
+        ...state,
+        screen: 'reporting',
         maxStepReached: Math.max(state.maxStepReached, 4),
       };
 
-    case 'OPEN_REPORT_WORKSPACE':
+    case 'SET_CURRENT_REPORT_DOCUMENT':
+      return { ...state, currentReportDocument: action.payload };
+
+    case 'CLEAR_VALUATION_ARTIFACT':
       return {
         ...state,
-        screen: 'report-viewer',
-        activeReportType: action.payload.reportType,
-        currentReportDocument: action.payload.reportDocument,
-        maxStepReached: Math.max(state.maxStepReached, 4),
+        currentReportDocument: null,
+        generatedReportByType: { ...state.generatedReportByType, valuation: null },
+        reportGenerationError: null,
       };
-
-    case 'SELECT_REPORT_TO_VIEW':
-      return { ...state, activeReportType: action.payload };
-
-    case 'BACK_TO_REPORTING_ENGINE':
-      return { ...state, screen: 'reporting-engine', activeReportType: null };
 
     default:
       return state;
@@ -190,5 +224,7 @@ export function getInitialAppState(): AppState {
     generatingReportType: null,
     activeReportType: null,
     currentReportDocument: null,
+    currentAnalysisDocument: null,
+    analysisWorkspaceRevealCompleteKey: null,
   };
 }

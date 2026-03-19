@@ -6,20 +6,20 @@ import type { GeneratedReportArtifact, GeneratedReportByType, ReportTypeId, Scre
 
 export const SCREEN_ORDER: ScreenId[] = [
   'select-company',
-  'choose-analyst',
-  'workspace',
-  'reporting-engine',
+  'select-analyst',
+  'research',
+  'analysis-workspace',
+  'reporting',
   'report-viewer',
-  'export',
 ];
 
 export const WORKFLOW_STEPS: { id: ScreenId; label: string }[] = [
-  { id: 'select-company', label: 'Company Selection' },
-  { id: 'choose-analyst', label: 'Analysis Setup' },
-  { id: 'workspace', label: 'Research Workspace' },
-  { id: 'reporting-engine', label: 'Analysis Engine' },
-  { id: 'report-viewer', label: 'Analysis Workspace' },
-  { id: 'export', label: 'Export' },
+  { id: 'select-company', label: 'Select Company' },
+  { id: 'select-analyst', label: 'Select Analyst' },
+  { id: 'research', label: 'Research Workspace' },
+  { id: 'analysis-workspace', label: 'Analysis Workspace' },
+  { id: 'reporting', label: 'Reporting Engine' },
+  { id: 'report-viewer', label: 'Report & Export' },
 ];
 
 export const INITIAL_GENERATED_REPORT_BY_TYPE: GeneratedReportByType = {
@@ -35,25 +35,28 @@ export const REPORT_TYPE_CONFIG: {
   description: string;
   availableInV0: boolean;
 }[] = [
-  { id: 'overview', label: 'Overview Report', description: 'Professional initiation report with company summary, investment thesis, financials, key positives/negatives, and credit/ESG notes.', availableInV0: true },
-  { id: 'valuation', label: 'Valuation Analysis', description: 'DCF, comparable multiples, and sum-of-the-parts analysis.', availableInV0: false },
-  { id: 'industry', label: 'Industry Comparison', description: 'Peer comparison and relative positioning within the sector.', availableInV0: false },
-  { id: 'news', label: 'News Impact', description: 'Recent news and events affecting the investment case.', availableInV0: false },
+  {
+    id: 'valuation',
+    label: 'Valuation Report',
+    description:
+      'Illustrative valuation framing based on earnings multiples (not a full valuation model).',
+    availableInV0: true,
+  },
 ];
 
 export function hasAnyReportGenerated(docs: GeneratedReportByType): boolean {
-  const has = (a: GeneratedReportArtifact | null) =>
-    a != null && a.pdfBytes != null && a.pdfBytes.length > 0;
-  return has(docs.overview) || has(docs.valuation) || has(docs.industry) || has(docs.news);
+  const v = docs.valuation;
+  return v != null && v.pdfBytes != null && v.pdfBytes.length > 0;
 }
 
 export function getReportTypeLabel(id: ReportTypeId): string {
+  if (id === 'valuation') return 'Valuation Report';
   return REPORT_TYPE_CONFIG.find((r) => r.id === id)?.label ?? id;
 }
 
 export function getPreviousScreen(screen: ScreenId): ScreenId | null {
   const i = SCREEN_ORDER.indexOf(screen);
-  return i <= 0 ? null : SCREEN_ORDER[i - 1];
+  return i <= 0 ? null : SCREEN_ORDER[i - 1]!;
 }
 
 export function getCurrentStepIndex(screen: ScreenId): number {
