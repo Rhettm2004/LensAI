@@ -35,8 +35,18 @@ export type ReportBlock = ReportNarrativeBlock | ReportBulletsBlock | ReportKpiH
 /** Report document: ordered blocks with source traceability. Extensible for future report types. */
 export interface ReportDocument {
   id: string;
-  reportType: 'overview';
+  reportType: 'overview' | 'valuation';
   sourceWorkspaceDocumentId: string;
   generatedAt: string;
   blocks: ReportBlock[];
+}
+
+/** Interpretation layer shown in Analysis Workspace; grounded in research widget. */
+export interface AnalysisWorkspaceDocument {
+  id: string;
+  sourceWidgetId: string;
+  sourceAttribution: string;
+  /** Plain paragraphs; UI shows as grounded commentary on the research table. */
+  commentary: string;
+  generatedAt: string;
 }

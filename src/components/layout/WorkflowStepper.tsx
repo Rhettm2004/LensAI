@@ -2,35 +2,30 @@ import React from 'react';
 import type { ScreenId } from '../../types';
 import { WORKFLOW_STEPS, getCurrentStepIndex } from '../../state';
 
-const REPORT_WORKSPACE_STEP_INDEX = 4;
-const EXPORT_STEP_INDEX = 5;
-
 export type WorkflowStepperProps = {
   currentScreen: ScreenId;
   maxStepReached: number;
-  hasAnyReportGenerated: boolean;
   onStepClick: (screen: ScreenId) => void;
 };
 
+/**
+ * Step index i is clickable only if maxStepReached >= i (user has progressed through the flow).
+ */
 export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
   currentScreen,
   maxStepReached,
-  hasAnyReportGenerated,
   onStepClick,
 }) => {
   const currentIndex = getCurrentStepIndex(currentScreen);
 
   return (
-    <nav className="workflow-stepper" aria-label="Analysis workflow">
+    <nav className="workflow-stepper" aria-label="LensAI workflow">
       {WORKFLOW_STEPS.map((step, index) => {
         const isCurrent = step.id === currentScreen;
         const isCompleted = index < currentIndex;
-        const stepUnlockedByProgress = index <= maxStepReached;
-        const isReportWorkspaceStep = index === REPORT_WORKSPACE_STEP_INDEX;
-        const step5Clickable = isReportWorkspaceStep ? stepUnlockedByProgress : true;
-        const isClickable = stepUnlockedByProgress && step5Clickable;
-        const isUnlockedFuture = index > currentIndex && isClickable;
+        const isClickable = index <= maxStepReached;
         const isLocked = !isClickable;
+        const isUnlockedFuture = index > currentIndex && isClickable;
 
         const stepClass = [
           'workflow-stepper-step',
@@ -55,7 +50,9 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
             >
               <span className="workflow-step-circle">
                 <span className="workflow-step-number">{index + 1}</span>
-                <span className="workflow-step-check" aria-hidden>✓</span>
+                <span className="workflow-step-check" aria-hidden>
+                  ✓
+                </span>
               </span>
               <span className="workflow-step-label">{step.label}</span>
             </button>

@@ -23,7 +23,20 @@ export interface KpiTableWorkspaceBlock {
   rows: KpiRow[];
 }
 
-export type WorkspaceBlock = NarrativeWorkspaceBlock | KpiTableWorkspaceBlock;
+/** Sourced financial table: explicit data provenance for Research Workspace. */
+export interface SourcedTableWorkspaceBlock {
+  blockType: 'sourcedTable';
+  id: string;
+  title: string;
+  sourceAttribution: string;
+  caption?: string;
+  rows: KpiRow[];
+}
+
+export type WorkspaceBlock =
+  | NarrativeWorkspaceBlock
+  | KpiTableWorkspaceBlock
+  | SourcedTableWorkspaceBlock;
 
 /** Workspace document: ordered list of blocks. Order = display order = report section order. */
 export interface WorkspaceDocument {

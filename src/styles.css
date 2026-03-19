@@ -385,6 +385,11 @@ body {
   border-color: rgba(91, 108, 255, 0.7);
 }
 
+.company-card-selected {
+  border-color: rgba(91, 108, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(91, 108, 255, 0.4);
+}
+
 .company-logo {
   width: 40px;
   height: 40px;
