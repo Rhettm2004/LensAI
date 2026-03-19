@@ -39,7 +39,7 @@ export const REPORT_TYPE_CONFIG: {
     id: 'valuation',
     label: 'Valuation Report',
     description:
-      'Financial interpretation plus a simple earnings-multiple band versus market cap (illustrative; not a full valuation model).',
+      'Illustrative valuation framing based on earnings multiples (not a full valuation model).',
     availableInV0: true,
   },
 ];

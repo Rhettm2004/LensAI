@@ -125,9 +125,10 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
           <ProgressIndicator
             completedCount={tableVisible ? 1 : 0}
             totalCount={1}
-            message={
+            message=""
+            statusText={
               tableVisible
-                ? 'Research widget ready. Continue when you have reviewed the table and source.'
+                ? 'Research complete — continue to analysis'
                 : 'Gathering structured research…'
             }
             ctaCopy="Next: Analysis Workspace."

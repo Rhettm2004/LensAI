@@ -2,6 +2,7 @@ import React from 'react';
 import type { Company } from '../types';
 import type { ReportDocument, ReportBlock } from '../types/report';
 import { getReportTypeLabel } from '../state';
+import { formatReportGeneratedAt } from '../utils/formatReportTimestamp';
 import { ReportBlockCard } from '../components/report/ReportBlockCard';
 
 const OVERVIEW_SUMMARY_ID = 'overviewSummary';
@@ -69,7 +70,7 @@ export const ReportWorkspaceScreen: React.FC<ReportWorkspaceScreenProps> = ({
       {reportDocument ? (
         <>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-            Generated {new Date(reportDocument.generatedAt).toLocaleString()} · {reportDocument.blocks.length} blocks
+            {formatReportGeneratedAt(reportDocument.generatedAt)} · {reportDocument.blocks.length} blocks
           </div>
           <div className="report-workspace-layout">
             {overviewSummary && (

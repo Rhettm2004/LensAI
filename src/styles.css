@@ -411,6 +411,22 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* Full card is clickable; pill matches purple CTA family but reads secondary vs standalone primary */
+.company-card .company-name {
+  color: var(--color-text, #e8e9f5);
+}
+
+.company-card .pill-tag {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #e8e9ff;
+  border: 1px solid rgba(91, 108, 255, 0.45);
+  background: linear-gradient(135deg, rgba(138, 125, 255, 0.28), rgba(91, 108, 255, 0.38));
+  box-shadow: 0 4px 16px rgba(91, 108, 255, 0.22);
+}
+
 .company-ticker {
   font-size: 13px;
   color: var(--color-text-muted);

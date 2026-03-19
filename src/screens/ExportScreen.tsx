@@ -3,6 +3,7 @@ import type { Company } from '../types';
 import type { ReportBlock } from '../types/report';
 import type { ReportDocument } from '../types/report';
 import { ReportBlockRenderer } from '../components/report/ReportBlockRenderer';
+import { formatReportGeneratedAt } from '../utils/formatReportTimestamp';
 
 function blocksInDisplayOrder(doc: ReportDocument): ReportBlock[] {
   const byId = Object.fromEntries(doc.blocks.map((b) => [b.id, b])) as Record<string, ReportBlock>;
@@ -135,7 +136,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                 {company.name} ({company.ticker}) — {reportTypeLabel}
               </div>
               <div className="widget-subtitle" style={{ marginTop: 6 }}>
-                Generated {new Date(reportDocument.generatedAt).toLocaleString()}
+                {formatReportGeneratedAt(reportDocument.generatedAt)}
               </div>
             </div>
           </div>

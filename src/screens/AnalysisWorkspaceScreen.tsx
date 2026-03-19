@@ -46,17 +46,6 @@ export const AnalysisWorkspaceScreen: React.FC<AnalysisWorkspaceScreenProps> = (
           <div className="widget-header">
             <div className="widget-title-group">
               <div className="widget-title">Revenue &amp; earnings analysis</div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: 'var(--color-text-muted, #9094b8)',
-                  marginTop: 6,
-                  lineHeight: 1.4,
-                  fontWeight: 400,
-                }}
-              >
-                Derived from: Revenue &amp; earnings (Research Workspace)
-              </div>
               <div className="widget-subtitle">FY21–FY24</div>
             </div>
             <span className="widget-pill">Analysis</span>
@@ -88,6 +77,18 @@ export const AnalysisWorkspaceScreen: React.FC<AnalysisWorkspaceScreenProps> = (
                 </div>
               </details>
             )}
+            <div
+              style={{
+                marginTop: 16,
+                paddingTop: 14,
+                borderTop: '1px solid rgba(255,255,255,0.08)',
+                fontSize: 11,
+                color: '#9094b8',
+                lineHeight: 1.45,
+              }}
+            >
+              Derived from: Revenue &amp; earnings (Research Workspace)
+            </div>
           </div>
         </div>
       )}
