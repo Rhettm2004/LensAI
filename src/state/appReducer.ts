@@ -12,6 +12,7 @@ import {
   INITIAL_GENERATED_REPORT_BY_TYPE,
   getPreviousScreen,
 } from './constants';
+import { analysisOutputToWorkspaceDocument } from '../utils/workspaceDocument';
 
 export type AppAction =
   | { type: 'GO_TO_SCREEN'; payload: ScreenId }
@@ -75,6 +76,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         analysisData: null,
         analysisLoadError: null,
         analysisStatus: 'idle',
+        currentResearchDocument: null,
         currentAnalysisDocument: null,
         currentReportDocument: null,
         analysisWorkspaceRevealCompleteKey: null,
@@ -97,6 +99,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         analysisStatus: 'running',
         analysisData: null,
         analysisLoadError: null,
+        currentResearchDocument: null,
         generatedReportByType: INITIAL_GENERATED_REPORT_BY_TYPE,
         reportingEngineState: 'engine',
         generatingReportType: null,
@@ -107,7 +110,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
 
     case 'SET_ANALYSIS_DATA':
-      return { ...state, analysisData: action.payload, analysisLoadError: null };
+      return {
+        ...state,
+        analysisData: action.payload,
+        analysisLoadError: null,
+        currentResearchDocument: analysisOutputToWorkspaceDocument(action.payload.analysis),
+      };
 
     case 'SET_ANALYSIS_LOAD_ERROR':
       return { ...state, analysisLoadError: action.payload, analysisStatus: 'idle' };
@@ -130,6 +138,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         screen: 'select-analyst',
         analysisStatus: 'idle',
+        currentResearchDocument: null,
         generatedReportByType: INITIAL_GENERATED_REPORT_BY_TYPE,
         reportingEngineState: 'engine',
         generatingReportType: null,
@@ -217,6 +226,7 @@ export function getInitialAppState(): AppState {
     selectedAnalystId: null,
     analysisStatus: 'idle',
     analysisData: null,
+    currentResearchDocument: null,
     analysisLoadError: null,
     reportGenerationError: null,
     generatedReportByType: INITIAL_GENERATED_REPORT_BY_TYPE,

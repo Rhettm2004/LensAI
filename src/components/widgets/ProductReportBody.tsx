@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
 import type { AnalysisOutput } from '../../types';
-import { analysisOutputToWorkspaceDocument, getNarrativeSectionsFromWorkspace } from '../../utils/workspaceDocument';
+import type { WorkspaceDocument } from '../../types/workspace';
+import { getNarrativeSectionsFromWorkspace } from '../../utils/workspaceDocument';
 import { getNarrativeBlocks } from '../../utils/analysisNarrative';
 
 export type ProductReportBodyProps = {
   analysis: AnalysisOutput;
   /** When true, show only data blocks (workspace). When false, show full narrative (report). */
   dataOnly?: boolean;
+  /**
+   * When dataOnly, factual preview uses this document (e.g. app state's currentResearchDocument).
+   * If omitted under dataOnly, narrative sections are empty — callers should pass the canonical research document.
+   */
+  researchDocument?: WorkspaceDocument | null;
 };
 
 const PREVIEW_MAX_CHARS = 320;
@@ -14,10 +20,14 @@ const PREVIEW_MAX_CHARS = 320;
 /**
  * Workspace: data-only blocks from WorkspaceDocument. Report: full narrative (data + evaluation).
  */
-export const ProductReportBody: React.FC<ProductReportBodyProps> = ({ analysis, dataOnly = false }) => {
+export const ProductReportBody: React.FC<ProductReportBodyProps> = ({
+  analysis,
+  dataOnly = false,
+  researchDocument = null,
+}) => {
   const [expanded, setExpanded] = useState(false);
   const blocks = dataOnly
-    ? getNarrativeSectionsFromWorkspace(analysisOutputToWorkspaceDocument(analysis))
+    ? getNarrativeSectionsFromWorkspace(researchDocument ?? { blocks: [] })
     : getNarrativeBlocks(analysis);
   const fullText = blocks.map((b) => `${b.title}\n${b.content}`).join('\n\n');
   const preview =

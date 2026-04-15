@@ -6,6 +6,7 @@
 import type { Company, CompanyAnalysisResponse } from './index';
 import type { GeneratedReportArtifact } from './reportDocument';
 import type { ReportDocument, AnalysisWorkspaceDocument } from './report';
+import type { WorkspaceDocument } from './workspace';
 
 export type ScreenId =
   | 'select-company'
@@ -41,6 +42,8 @@ export type AppState = {
   selectedAnalystId: AnalystId | null;
   analysisStatus: AnalysisStatus;
   analysisData: CompanyAnalysisResponse | null;
+  /** Research Workspace: canonical workspace document built when analysis loads. */
+  currentResearchDocument: WorkspaceDocument | null;
   analysisLoadError: string | null;
   reportGenerationError: string | null;
   generatedReportByType: GeneratedReportByType;

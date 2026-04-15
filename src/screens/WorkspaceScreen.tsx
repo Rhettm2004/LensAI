@@ -1,9 +1,9 @@
 import React from 'react';
-import type { Company, AnalysisOutput } from '../types';
+import type { Company } from '../types';
 import type { AppAnalysisStatus } from '../types';
 import type { WorkspaceDocument } from '../types/workspace';
 import { WORKSPACE_RESEARCH_WIDGET_MS } from '../constants';
-import { analysisOutputToWorkspaceDocument, getBlockDisplayConfig } from '../utils/workspaceDocument';
+import { getBlockDisplayConfig } from '../utils/workspaceDocument';
 import { ErrorCallout } from '../components/feedback';
 import { WidgetLoading, KpiTable } from '../components/widgets';
 import { ProgressIndicator } from '../components/progress';
@@ -12,7 +12,7 @@ const RESEARCH_EXPANDED_SOURCE_LINE = 'Source: Company financial statements (10-
 
 export type WorkspaceScreenProps = {
   company: Company;
-  analysis: AnalysisOutput | null;
+  researchDocument: WorkspaceDocument | null;
   analysisStatus: AppAnalysisStatus;
   analysisLoadError: string | null;
   onRetryAnalysis: () => void;
@@ -21,14 +21,14 @@ export type WorkspaceScreenProps = {
 
 export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
   company,
-  analysis,
+  researchDocument,
   analysisStatus,
   analysisLoadError,
   onRetryAnalysis,
   onContinueToAnalysis,
 }) => {
-  const workspace: WorkspaceDocument | null = analysis ? analysisOutputToWorkspaceDocument(analysis) : null;
-  const tableVisible = analysisStatus === 'complete' && !!analysis;
+  const workspace = researchDocument;
+  const tableVisible = analysisStatus === 'complete' && !!workspace;
   const showError = !!analysisLoadError;
   const block = workspace?.blocks[0];
   const config = block ? getBlockDisplayConfig(block.id) : undefined;

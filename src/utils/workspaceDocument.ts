@@ -10,7 +10,7 @@ import type {
   NarrativeWorkspaceBlock,
 } from '../types/workspace';
 
-const EARNINGS_REVENUE_BLOCK_ID = 'earningsRevenue';
+export const EARNINGS_REVENUE_BLOCK_ID = 'earningsRevenue';
 
 /**
  * Research Workspace: one widget — revenue & earnings table.

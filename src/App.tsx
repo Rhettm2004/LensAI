@@ -58,13 +58,13 @@ export const App: React.FC = () => {
   }, []);
 
   const continueToAnalysis = useCallback(() => {
-    if (!state.analysisData) return;
+    if (!state.analysisData || !state.currentResearchDocument) return;
     const doc = buildAnalysisWorkspaceDocument(
-      state.analysisData.analysis,
+      state.currentResearchDocument,
       state.analysisData.company.ticker
     );
     dispatch({ type: 'CONTINUE_TO_ANALYSIS', payload: doc });
-  }, [state.analysisData]);
+  }, [state.analysisData, state.currentResearchDocument]);
 
   const continueToReporting = useCallback(() => dispatch({ type: 'CONTINUE_TO_REPORTING' }), []);
 
@@ -257,7 +257,7 @@ export const App: React.FC = () => {
           {state.screen === 'research' && (
             <WorkspaceScreen
               company={effectiveCompany}
-              analysis={analysis}
+              researchDocument={state.currentResearchDocument}
               analysisStatus={state.analysisStatus}
               analysisLoadError={state.analysisLoadError}
               onRetryAnalysis={runAnalysis}

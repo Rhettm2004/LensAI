@@ -2,8 +2,10 @@
  * Pattern-based analysis from revenue / earnings series (no LLM).
  */
 
-import type { AnalysisOutput } from '../types';
+import type { AnalysisOutput, KpiRow } from '../types';
 import type { AnalysisWorkspaceDocument } from '../types/report';
+import type { WorkspaceDocument, SourcedTableWorkspaceBlock } from '../types/workspace';
+import { EARNINGS_REVENUE_BLOCK_ID } from './workspaceDocument';
 
 const FYS = ['FY21', 'FY22', 'FY23', 'FY24'] as const;
 
@@ -17,9 +19,7 @@ function parseBillions(s: string | undefined): number {
   return n;
 }
 
-export function seriesForRow(
-  row: AnalysisOutput['earningsRevenueRows'][0] | undefined
-): number[] {
+export function seriesForRow(row: KpiRow | undefined): number[] {
   if (!row?.periodValues) return [];
   return FYS.map((k) => parseBillions(row.periodValues![k]));
 }
@@ -167,11 +167,19 @@ export function buildValuationFramingNarrative(analysis: AnalysisOutput): string
   return parts.join('\n\n');
 }
 
+function earningsRevenueRowsFromResearchDocument(doc: WorkspaceDocument): KpiRow[] {
+  const block = doc.blocks.find(
+    (b): b is SourcedTableWorkspaceBlock =>
+      b.blockType === 'sourcedTable' && b.id === EARNINGS_REVENUE_BLOCK_ID
+  );
+  return block?.rows?.length ? block.rows : [];
+}
+
 export function buildAnalysisWorkspaceDocument(
-  analysis: AnalysisOutput,
+  researchDocument: WorkspaceDocument,
   _companyTicker?: string
 ): AnalysisWorkspaceDocument {
-  const rows = analysis.earningsRevenueRows ?? [];
+  const rows = earningsRevenueRowsFromResearchDocument(researchDocument);
   const revRow = rows.find((r) => /revenue/i.test(r.metric));
   const niRow = rows.find((r) => /net income/i.test(r.metric));
   const r = seriesForRow(revRow);
